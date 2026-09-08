@@ -1,0 +1,12 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+body { font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif; -webkit-tap-highlight-color: rgba(0,0,0,0); }
+.custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(220, 38, 38, 0.2); border-radius: 4px; }
+.dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #44403c; }
+
+@keyframes pantryRedBlink {
+  0%, 100% { border-color: rgba(220, 38, 38, 1); background-color: rgba(254, 226, 226, 0.9); box-shadow: 0 0 16px rgba(220, 38, 38, 0.4); }
+  50% { border-color: rgba(239, 68, 68, 0.4); background-color: rgba(255, 255, 255, 0.8); box-shadow: 0 0 0px transparent; }
+}
+.pantry-red-blink { animation: pantryRedBlink 1.2s infinite ease-in-out !important; }
