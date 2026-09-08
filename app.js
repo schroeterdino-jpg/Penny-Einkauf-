@@ -128,11 +128,21 @@ function toggleSpeechRecognition(isChatContext = false) {
   recognition.interimResults = false;
   recognition.maxAlternatives = 1;
 
-  recognition.onstart = () => {
+    recognition.onstart = () => {
     isListening = true;
-    if (micBtn) micBtn.classList.add('bg-red-600', 'text-white', 'animate-pulse');
+    if (micBtn) {
+      micBtn.classList.add('bg-red-600', 'text-white', 'animate-pulse');
+      // Kleine visuelle Wellen-Animation direkt am Button
+      micBtn.innerHTML = '🎙️ <span class="absolute -top-1 -right-1 flex h-3 w-3"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span></span>';
+    }
+    
+    // Akustisches Start-Signal (zwei kurze, freundliche Töne)
+    playTone(587.33, 'sine', 0.08, 0.2); // D5
+    setTimeout(() => playTone(880, 'sine', 0.1, 0.2), 90); // A5
+    
     showToast('Höre zu... Sprich jetzt! 🎤');
   };
+
 
   recognition.onresult = (event) => {
     const spokenText = event.results[0][0].transcript;
@@ -166,10 +176,14 @@ function toggleSpeechRecognition(isChatContext = false) {
     if (micBtn) micBtn.classList.remove('bg-red-600', 'text-white', 'animate-pulse');
   };
 
-  recognition.onend = () => {
+    recognition.onend = () => {
     isListening = false;
-    if (micBtn) micBtn.classList.remove('bg-red-600', 'text-white', 'animate-pulse');
+    if (micBtn) {
+      micBtn.classList.remove('bg-red-600', 'text-white', 'animate-pulse');
+      micBtn.innerHTML = '🎤'; // Zurück zum Standard-Mikrofon-Icon
+    }
   };
+
 
   try {
     recognition.start();
