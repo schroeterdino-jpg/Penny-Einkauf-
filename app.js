@@ -371,10 +371,6 @@ async function loadAppState() {
     console.error('Fehler beim Laden aus IndexedDB:', e);
   }
   initTheme();
-  runAutomaticPantryConsumption();
-  render();
-}
-
 function runAutomaticPantryConsumption() {
   const now = Date.now();
   const oneDayMs = 24 * 60 * 60 * 1000;
@@ -383,13 +379,17 @@ function runAutomaticPantryConsumption() {
     const diffDays = (now - p.lastChecked) / oneDayMs;
     if (diffDays >= 1) {
       const fullDays = Math.floor(diffDays);
-      const consumed = fullDays * (p.dailyConsumption || 1);
-      p.totalPieces = Math.max(0, parseFloat(((p.totalPieces || 0) - consumed).toFixed(2)));
+      // Nur abziehen, wenn nicht pausiert
+      if (p.intervallAktiv !== false) {
+        const consumed = fullDays * (p.dailyConsumption || 1);
+        p.totalPieces = Math.max(0, parseFloat(((p.totalPieces || 0) - consumed).toFixed(2)));
+      }
       p.lastChecked = p.lastChecked + (fullDays * oneDayMs);
     }
   });
   saveState();
 }
+
 
 function getActiveMarketKey() {
   const l = state.lists.find(x => x.id === state.activeListId);
@@ -2858,6 +2858,8 @@ function saveEditPantryModal(id) {
   const buyQtyInp = document.getElementById('edit-pantry-buyqty');
   const perPackInp = document.getElementById('edit-pantry-perpack');
   const dailyInp = document.getElementById('edit-pantry-daily');
+  const intervallInp = document.getElementById('edit-pantry-intervall');
+
   const aisleSel = document.getElementById('edit-pantry-aisle');
 
   const oldName = item.name;
@@ -2872,6 +2874,8 @@ function saveEditPantryModal(id) {
   if (buyQtyInp) item.buyQty = parseInt(buyQtyInp.value, 10) || 1;
   if (perPackInp) item.itemsPerPack = parseInt(perPackInp.value, 10) || 1;
   if (dailyInp) item.dailyConsumption = parseFloat(dailyInp.value) || 0.5;
+  if (intervallInp) item.intervallAktiv = intervallInp.checked;
+
   if (aisleSel) item.aisleNumber = parseInt(aisleSel.value, 10) || item.aisleNumber;
 
   persistProduct({ name: newName, shopUnit: item.shopUnit, aisleNumber: item.aisleNumber }, oldName);
