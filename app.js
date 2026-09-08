@@ -128,21 +128,18 @@ function toggleSpeechRecognition(isChatContext = false) {
   recognition.interimResults = false;
   recognition.maxAlternatives = 1;
 
-    recognition.onstart = () => {
+  recognition.onstart = () => {
     isListening = true;
     if (micBtn) {
       micBtn.classList.add('bg-red-600', 'text-white', 'animate-pulse');
-      // Kleine visuelle Wellen-Animation direkt am Button
       micBtn.innerHTML = '🎙️ <span class="absolute -top-1 -right-1 flex h-3 w-3"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span></span>';
     }
     
-    // Akustisches Start-Signal (zwei kurze, freundliche Töne)
-    playTone(587.33, 'sine', 0.08, 0.2); // D5
-    setTimeout(() => playTone(880, 'sine', 0.1, 0.2), 90); // A5
+    playTone(587.33, 'sine', 0.08, 0.2);
+    setTimeout(() => playTone(880, 'sine', 0.1, 0.2), 90);
     
     showToast('Höre zu... Sprich jetzt! 🎤');
   };
-
 
   recognition.onresult = (event) => {
     const spokenText = event.results[0][0].transcript;
@@ -176,14 +173,13 @@ function toggleSpeechRecognition(isChatContext = false) {
     if (micBtn) micBtn.classList.remove('bg-red-600', 'text-white', 'animate-pulse');
   };
 
-    recognition.onend = () => {
+  recognition.onend = () => {
     isListening = false;
     if (micBtn) {
       micBtn.classList.remove('bg-red-600', 'text-white', 'animate-pulse');
-      micBtn.innerHTML = '🎤'; // Zurück zum Standard-Mikrofon-Icon
+      micBtn.innerHTML = '🎤';
     }
   };
-
 
   try {
     recognition.start();
@@ -371,6 +367,9 @@ async function loadAppState() {
     console.error('Fehler beim Laden aus IndexedDB:', e);
   }
   initTheme();
+  runAutomaticPantryConsumption();
+}
+
 function runAutomaticPantryConsumption() {
   const now = Date.now();
   const oneDayMs = 24 * 60 * 60 * 1000;
@@ -379,7 +378,6 @@ function runAutomaticPantryConsumption() {
     const diffDays = (now - p.lastChecked) / oneDayMs;
     if (diffDays >= 1) {
       const fullDays = Math.floor(diffDays);
-      // Nur abziehen, wenn nicht pausiert
       if (p.intervallAktiv !== false) {
         const consumed = fullDays * (p.dailyConsumption || 1);
         p.totalPieces = Math.max(0, parseFloat(((p.totalPieces || 0) - consumed).toFixed(2)));
@@ -389,7 +387,6 @@ function runAutomaticPantryConsumption() {
   });
   saveState();
 }
-
 
 function getActiveMarketKey() {
   const l = state.lists.find(x => x.id === state.activeListId);
@@ -1087,6 +1084,7 @@ function saveNewPantryItem() {
   const buyQtyInp = document.getElementById('new-pantry-buyqty');
   const perPackInp = document.getElementById('new-pantry-perpack');
   const dailyInp = document.getElementById('new-pantry-daily');
+  const intervallInp = document.getElementById('new-pantry-intervall');
   const aisleSel = document.getElementById('new-pantry-aisle');
 
   const n = nameInp ? nameInp.value.trim() : ''; if (!n) return;
@@ -1108,6 +1106,7 @@ function saveNewPantryItem() {
   state.pantry.unshift({ 
     id: 'pantry-' + Date.now(), name: n, shopUnit: shopUnit, pantryUnit: pantryUnit, 
     totalPieces: pieces, minPieces: min, buyQty: buyQty, itemsPerPack: itemsPerPack, dailyConsumption: daily, 
+    intervallAktiv: intervallInp ? intervallInp.checked : true,
     aisleNumber: a, lastChecked: Date.now() 
   });
   state.showNewPantryModal = false; state.pantrySearchQuery = ''; soundAdd(); saveState(); showToast(`Vorrat "${n}" gespeichert`); render();
@@ -1905,7 +1904,9 @@ function render() {
                           <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full ${low ? 'text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/60 animate-pulse' : 'text-stone-500 bg-stone-100 dark:bg-stone-800'}">
                             ${empty ? '🚨 LEER!' : (daysLeft !== null ? (daysLeft <= 0 ? '⚠️ Leer!' : `~${daysLeft} Tage`) : `Min: ${it.minPieces||1}`)}
                           </span>
-                          <span class="text-[9px] text-stone-400 font-semibold">(${it.dailyConsumption || 1}/Tag fest)</span>
+                          <span class="text-[9px] font-semibold ${it.intervallAktiv === false ? 'text-amber-500' : 'text-stone-400'}">
+                            (${it.dailyConsumption || 1}/Tag ${it.intervallAktiv === false ? '⏸️ paussiert' : '▶️ aktiv'})
+                          </span>
                         </div>
 
                         <div class="mt-1.5 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-2.5 py-1 rounded-xl border border-amber-200 dark:border-amber-900/40 inline-block shadow-xs">
@@ -2533,6 +2534,14 @@ function render() {
               <div><label class="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 block mb-1">Inhalt pro Packung</label><input type="number" id="new-pantry-perpack" min="1" value="10" class="w-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 text-emerald-800 rounded-xl px-2.5 py-1.5 text-xs font-bold shadow-xs" /></div>
             </div>
             <div><label class="text-[10px] font-bold text-stone-600 dark:text-stone-400 block mb-1">Verbrauch / Tag (Fest)</label><input type="number" step="0.1" id="new-pantry-daily" min="0.1" value="3" class="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 rounded-xl px-2.5 py-1.5 text-xs shadow-xs" /></div>
+            
+            <div class="flex items-center gap-2 mt-2">
+              <input type="checkbox" id="new-pantry-intervall" checked class="w-4 h-4 rounded text-red-600 cursor-pointer" />
+              <label for="new-pantry-intervall" class="text-[10px] font-bold text-stone-700 dark:text-stone-300 cursor-pointer">
+                Täglicher Verbrauch aktiv (Zyklus)
+              </label>
+            </div>
+
             <select id="new-pantry-aisle" class="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 rounded-xl px-3 py-2 text-xs font-semibold shadow-xs">
               ${pantryModalAisles.map(a => `<option value="${a.number}" ${a.number===12?'selected':''}>${a.name}</option>`).join('')}
             </select>
@@ -2577,6 +2586,14 @@ function render() {
               <div><label class="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 block mb-1">Inhalt pro Packung</label><input type="number" id="edit-pantry-perpack" min="1" value="${item.itemsPerPack||10}" class="w-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 text-emerald-800 rounded-xl px-2.5 py-1.5 text-xs font-bold shadow-xs" /></div>
             </div>
             <div><label class="text-[10px] font-bold text-stone-700 dark:text-stone-300 block mb-1">Verbrauch / Tag (Fest)</label><input type="number" step="0.1" id="edit-pantry-daily" value="${item.dailyConsumption||3}" class="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 rounded-xl px-2.5 py-1.5 text-xs font-bold shadow-xs" /></div>
+            
+            <div class="flex items-center gap-2 mt-2">
+              <input type="checkbox" id="edit-pantry-intervall" ${item.intervallAktiv !== false ? 'checked' : ''} class="w-4 h-4 rounded text-red-600 cursor-pointer" />
+              <label for="edit-pantry-intervall" class="text-[10px] font-bold text-stone-700 dark:text-stone-300 cursor-pointer">
+                Täglicher Verbrauch aktiv (Zyklus)
+              </label>
+            </div>
+
             <div>
               <label class="text-[11px] font-bold text-stone-700 dark:text-stone-300 block mb-1">Gang</label>
               <select id="edit-pantry-aisle" class="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 rounded-xl px-3 py-2 text-xs font-semibold shadow-xs">
