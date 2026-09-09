@@ -1,4 +1,4 @@
-// app.js - Gesamte Logik, State, KI & Rendering
+// app.js - Gesamte Logik, State, KI & Rendering (Scanner mit Abfrage: Einkaufsliste vs. Nur Datenbank)
 
 function getGroqApiKey() {
   let key = localStorage.getItem('dino_groq_api_key_v1');
@@ -318,10 +318,10 @@ let state = {
   showDuplicateModal: false, duplicateSearchTerm: '',
   showExportModal: false, exportTextContent: '',
   showVoiceDisambiguationModal: false, voiceDisambiguationMatches: [],
-  // NEU FÜR BARCODE-ZUORDNUNG:
   showBarcodeMatchModal: false,
   scannedBarcodeData: null,
-  barcodeMatchCandidates: []
+  barcodeMatchCandidates: [],
+  savedBarcodes: {}
 };
 
 async function saveState() {
@@ -338,6 +338,7 @@ async function loadAppState() {
     const savedState = await localforage.getItem('dino_app_state_v125');
     if (savedState) {
       state = Object.assign(state, savedState);
+      if (!state.savedBarcodes) state.savedBarcodes = {};
     } else {
       try {
         const oldItems = localStorage.getItem('penny_items_v124');
@@ -691,7 +692,8 @@ function exportAppDataSafe() {
     deletedMasterIds: state.deletedMasterIds,
     customMarketAisles: state.customMarketAisles,
     marketOverrides: state.marketOverrides,
-    purchaseHistory: state.purchaseHistory
+    purchaseHistory: state.purchaseHistory,
+    savedBarcodes: state.savedBarcodes
   };
   state.exportTextContent = JSON.stringify(backupData, null, 2);
   state.showExportModal = true;
@@ -719,6 +721,7 @@ function importAppDataText() {
       state.customMarketAisles = parsed.customMarketAisles || {};
       state.marketOverrides = parsed.marketOverrides || {};
       state.purchaseHistory = parsed.purchaseHistory || [];
+      state.savedBarcodes = parsed.savedBarcodes || {};
       saveState();
       soundComplete();
       showToast("Backup erfolgreich eingespielt! 🎉");
@@ -1747,6 +1750,9 @@ function render() {
               <button id="mic-btn" onclick="toggleSpeechRecognition(false)" class="bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 px-3 py-2.5 rounded-2xl shrink-0 shadow-xs flex items-center justify-center text-sm transition-all" title="Sprachsteuerung starten">
                 🎤
               </button>
+              <button onclick="openBarcodeScannerModal();" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2.5 rounded-2xl shrink-0 shadow-xs flex items-center justify-center text-sm transition-all" title="Barcode scannen">
+                📷
+              </button>
               <button onclick="const n=document.getElementById('main-search-input').value.trim(); if(n){ addItem(n, 1); render(); }" class="bg-red-600 hover:bg-red-700 text-white text-xs font-extrabold px-3.5 py-2.5 rounded-2xl shrink-0 shadow-xs">+ Hinzufügen</button>
             </div>
             <div id="search-dropdown-container" class="hidden absolute left-3 right-3 top-full mt-2 bg-white dark:bg-[#1a1a1a] border border-stone-200 dark:border-stone-800 rounded-3xl shadow-xl overflow-hidden z-40 max-h-60 overflow-y-auto custom-scrollbar"></div>
@@ -1866,7 +1872,6 @@ function render() {
                 <p class="text-[11px] text-stone-500 font-medium">Fester Verbrauch pro Tag 🤖</p>
               </div>
               <div class="flex gap-1.5">
-                <button onclick="openBarcodeScannerModal();" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold px-3 py-2 rounded-xl shadow-xs">📷 Scannen</button>
                 <button onclick="addMissingPantryToShopping();" class="bg-red-600 hover:bg-red-700 text-white text-xs font-extrabold px-3 py-2 rounded-xl shadow-xs">+ Fehlendes auf Liste</button>
                 <button onclick="state.showNewPantryModal=true; render();" class="bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-xs font-extrabold px-3 py-2 rounded-xl shadow-xs">+ Neu</button>
               </div>
@@ -2240,7 +2245,6 @@ function render() {
       `;
     }
 
-    // MODAL FÜR BARCODE-ZUORDNUNG (FRAGT DICH, OB ES DEIN ARTIKEL IST)
     if (state.showBarcodeMatchModal) {
       const scannedInfo = state.scannedBarcodeData || {};
       html += `
@@ -2259,7 +2263,7 @@ function render() {
               <p class="font-black text-stone-900 dark:text-stone-100">${scannedInfo.rawName || 'Unbekannt'}</p>
             </div>
 
-            <p class="text-xs text-stone-600 dark:text-stone-400 font-medium">Wir haben folgende passende Artikel in deiner Liste/deinem Vorrat gefunden. Ist das einer davon?</p>
+            <p class="text-xs text-stone-600 dark:text-stone-400 font-medium">Wir haben folgende passende Artikel in deiner Datenbank gefunden. Ist das einer davon?</p>
 
             <div class="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
               ${state.barcodeMatchCandidates.map(cand => `
@@ -2275,7 +2279,40 @@ function render() {
 
             <div class="pt-2 border-t border-stone-100 dark:border-stone-800 space-y-2">
               <button onclick="assignBarcodeAsNewProduct()" class="w-full py-2.5 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 font-bold text-xs rounded-xl border border-stone-200 dark:border-stone-700 shadow-xs text-center">
-                Nein, als neuen Artikel "${scannedInfo.rawName}" anlegen
+                Nein, als neuen Artikel "${scannedInfo.rawName}" in Datenbank aufnehmen
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    if (state.showScanIntentModal) {
+      const scannedInfo = state.scannedBarcodeData || {};
+      html += `
+        <div class="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+          <div class="bg-white dark:bg-[#1a1a1a] border border-stone-200 dark:border-stone-800 rounded-3xl max-w-sm w-full p-4 shadow-2xl space-y-3 text-stone-900 dark:text-stone-100 text-center">
+            <div class="flex justify-between items-center pb-2 border-b border-stone-100 dark:border-stone-800">
+              <div class="flex items-center gap-1.5">
+                <span class="text-base">📷</span>
+                <h3 class="font-extrabold text-sm">Artikel gescannt</h3>
+              </div>
+              <button onclick="state.showScanIntentModal=false; render();" class="text-stone-400 hover:text-stone-700 font-bold">✕</button>
+            </div>
+            
+            <div class="bg-stone-50 dark:bg-stone-800/60 p-3 rounded-2xl border border-stone-200 dark:border-stone-700 text-xs">
+              <span class="text-[10px] font-bold text-stone-400 uppercase block">Erkanntes Produkt:</span>
+              <p class="font-black text-stone-900 dark:text-stone-100 text-sm mt-0.5">${scannedInfo.finalName || 'Produkt'}</p>
+            </div>
+
+            <p class="text-xs text-stone-600 dark:text-stone-400 font-medium">Was möchtest du mit diesem Artikel tun?</p>
+
+            <div class="space-y-2 pt-1">
+              <button onclick="executeScanIntent('cart')" class="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs rounded-2xl shadow-xs flex items-center justify-center gap-2">
+                <span>🛒 Direkt in den Einkaufswagen</span>
+              </button>
+              <button onclick="executeScanIntent('db')" class="w-full py-3 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 font-extrabold text-xs rounded-2xl border border-stone-200 dark:border-stone-700 shadow-xs flex items-center justify-center gap-2">
+                <span>🗄️ Nur für die Datenbank merken</span>
               </button>
             </div>
           </div>
@@ -2501,7 +2538,7 @@ function render() {
             </div>
             <div class="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 p-3 rounded-2xl space-y-1">
               <label class="text-xs font-bold text-emerald-950 dark:text-emerald-300 block">Pfandbon abgegeben? (€)</label>
-              <input type="number" step="0.01" min="0" value="${state.finishDepositReceipt||''}" oninput="state.finishDepositReceipt=parseFloat(this.value)||0; const newReceipt=parseFloat(this.value)||0; const finalCalc=Math.max(0, (${grossTotal})-newReceipt); document.getElementById('finish-total-display').innerText=finalCalc.toFixed(2)+' €';" placeholder="0,00 €" class="w-full bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 border border-emerald-300 dark:border-emerald-700 rounded-xl px-3 py-2 text-xs font-bold shadow-xs" />
+              <input type="number" step="0.01" min="0" value="${state.finishDepositReceipt||''}" oninput="state.finishDepositReceipt=parseFloat(this.value)||0; const newReceipt=parseFloat(this.value)||0; const finalCalc=Math.max(0, (${grossTotal})-newReceipt); document.getElementById('finish-total-display').innerText=finalCalc.toFixed(2)+' €';" placeholder="0,00 €" class="w-full bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 border border-emerald-300 dark:border-emerald-700 rounded-xl px-2.5 py-2 text-xs font-bold shadow-xs" />
             </div>
             <div class="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 p-3 rounded-2xl flex justify-between items-center">
               <span class="text-xs font-extrabold text-red-900 dark:text-red-300">Zu zahlen:</span>
@@ -2947,6 +2984,11 @@ function saveEditItemModal(id) {
     state.savedDeposits[newName] = dVal;
   }
 
+  if (state.scannedBarcodeData && state.scannedBarcodeData.barcode) {
+    const activeBarcode = state.scannedBarcodeData.barcode;
+    state.savedBarcodes[activeBarcode] = newName;
+  }
+
   persistProduct({ name: newName, shopUnit: item.packageUnit, defaultPrice: item.estimatedPrice, depositAmount: item.depositAmount, aisleNumber: item.aisleNumber }, oldName);
 
   state.editingModalItem = null;
@@ -2992,6 +3034,10 @@ function saveEditPantryModal(id) {
   if (intervallInp) item.intervallAktiv = intervallInp.checked;
 
   if (aisleSel) item.aisleNumber = parseInt(aisleSel.value, 10) || item.aisleNumber;
+
+  if (state.scannedBarcodeData && state.scannedBarcodeData.barcode) {
+    state.savedBarcodes[state.scannedBarcodeData.barcode] = newName;
+  }
 
   persistProduct({ name: newName, shopUnit: item.shopUnit, aisleNumber: item.aisleNumber }, oldName);
 
@@ -3138,6 +3184,13 @@ function startScannerCamera() {
 
 async function fetchProductByBarcode(barcode) {
   try {
+    if (state.savedBarcodes && state.savedBarcodes[barcode]) {
+      const rememberedName = state.savedBarcodes[barcode];
+      showToast(`✨ Bekannter Barcode! Erkannt als: "${rememberedName}"`);
+      handleScannedProductNameResolved(rememberedName, barcode);
+      return;
+    }
+
     const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
     const data = await response.json();
 
@@ -3146,35 +3199,30 @@ async function fetchProductByBarcode(barcode) {
       
       const catalog = getCatalog();
       const lowerApiName = rawApiName.toLowerCase();
-      
-      // Intelligente Suche nach passenden Artikeln (z.B. Wörter wie "energy", "pants", "cola" im Namen)
       const queryWords = lowerApiName.split(/\s+/).filter(w => w.length > 2);
       
       const matchingCandidates = catalog.filter(p => {
         const pNameLower = p.name.toLowerCase();
-        // Entweder Namensgleichheit oder Überlappung bei wichtigen Schlüsselwörtern
         if (pNameLower.includes(lowerApiName) || lowerApiName.includes(pNameLower)) return true;
         return queryWords.some(w => pNameLower.includes(w));
       });
 
       if (matchingCandidates.length > 0) {
-        // Wir fragen Dino per modaler Box, ob das einer seiner Artikel ist!
         state.scannedBarcodeData = { barcode, rawName: rawApiName };
-        state.barcodeMatchCandidates = matchingCandidates.slice(0, 5); // Max 5 Vorschläge
+        state.barcodeMatchCandidates = matchingCandidates.slice(0, 5);
         state.showBarcodeMatchModal = true;
         soundAdd();
         render();
       } else {
-        // Nichts gefunden -> Direkt als neuen Artikel anfragen oder eintragen
-        const customName = prompt(`Barcode ${barcode} (${rawApiName}) nicht in deiner Liste gefunden. Wie möchtest du ihn nennen?`, rawApiName);
+        const customName = prompt(`Barcode ${barcode} (${rawApiName}) nicht in deiner Datenbank. Wie möchtest du ihn nennen?`, rawApiName);
         if (customName && customName.trim()) {
-          processScannedProductFinal(customName.trim());
+          handleScannedProductNameResolved(customName.trim(), barcode);
         }
       }
     } else {
       const customName = prompt(`Barcode ${barcode} nicht in weltweiter Datenbank. Wie heißt das Produkt?`, "Neues Produkt");
       if (customName && customName.trim()) {
-        processScannedProductFinal(customName.trim());
+        handleScannedProductNameResolved(customName.trim(), barcode);
       }
     }
   } catch (err) {
@@ -3183,51 +3231,54 @@ async function fetchProductByBarcode(barcode) {
 }
 
 function assignBarcodeToExistingProduct(chosenName) {
+  const barcode = state.scannedBarcodeData ? state.scannedBarcodeData.barcode : null;
   state.showBarcodeMatchModal = false;
-  processScannedProductFinal(chosenName);
+  handleScannedProductNameResolved(chosenName, barcode);
 }
 
 function assignBarcodeAsNewProduct() {
   const raw = state.scannedBarcodeData ? state.scannedBarcodeData.rawName : 'Neues Produkt';
-  const customName = prompt("Wie soll dieser Artikel in deiner Liste heißen?", raw);
+  const customName = prompt("Wie soll dieser Artikel in deiner Datenbank heißen?", raw);
   state.showBarcodeMatchModal = false;
   if (customName && customName.trim()) {
-    processScannedProductFinal(customName.trim());
+    const barcode = state.scannedBarcodeData ? state.scannedBarcodeData.barcode : null;
+    handleScannedProductNameResolved(customName.trim(), barcode);
   }
 }
 
-function processScannedProductFinal(finalProductName) {
-  const existingPantry = state.pantry.find(p => p.name.toLowerCase().trim() === finalProductName.toLowerCase().trim());
+function handleScannedProductNameResolved(finalName, barcode) {
+  state.scannedBarcodeData = { barcode, finalName };
+  state.showScanIntentModal = true;
+  soundAdd();
+  render();
+}
 
-  if (existingPantry) {
-    updatePantryPieces(existingPantry.id, 1);
-    showToast(`✨ "${finalProductName}" im Vorrat gefunden & +1 erhöht!`);
-  } else {
-    const aisle = getProductAisleForMarket(finalProductName, 'penny');
-    const defaultUnitPrice = getBaseUnitPrice(finalProductName, 0);
-    const defaultDeposit = getBaseUnitDeposit(finalProductName, 0);
-    const defaultShopUnit = 'Packung';
-
-    state.pantry.unshift({
-      id: 'pantry-' + Date.now(),
-      name: finalProductName,
-      shopUnit: defaultShopUnit,
-      pantryUnit: 'Stk.',
-      totalPieces: 1,
-      minPieces: 1,
-      buyQty: 1,
-      itemsPerPack: 1,
-      dailyConsumption: 0.5,
-      intervallAktiv: true,
-      aisleNumber: aisle,
-      lastChecked: Date.now(),
-      lastUpdateDate: getTodayString()
-    });
-    saveState();
-    soundAdd();
-    showToast(`🎉 Im Vorrat erfasst: "${finalProductName}"!`);
+function executeScanIntent(intent) {
+  const scanned = state.scannedBarcodeData;
+  if (!scanned) {
+    state.showScanIntentModal = false;
     render();
+    return;
   }
+
+  const { barcode, finalName } = scanned;
+
+  if (barcode) {
+    state.savedBarcodes[barcode] = finalName;
+  }
+  persistProduct({ name: finalName });
+
+  if (intent === 'cart') {
+    addItem({ name: finalName }, 1);
+    showToast(`🛒 "${finalName}" zur Einkaufsliste hinzugefügt!`);
+  } else {
+    showToast(`🗄️ "${finalName}" in Produktdatenbank gespeichert!`);
+  }
+
+  state.showScanIntentModal = false;
+  state.scannedBarcodeData = null;
+  saveState();
+  render();
 }
 
 loadAppState();
