@@ -2387,6 +2387,25 @@ function render() {
         </div>
       `;
     }
+    if (state.showScannerModal) {
+      html += `
+        <div class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div class="bg-white dark:bg-[#1a1a1a] border border-stone-200 dark:border-stone-800 rounded-3xl max-w-sm w-full p-4 shadow-2xl space-y-3 text-stone-900 dark:text-stone-100">
+            <div class="flex justify-between items-center pb-2 border-b border-stone-100 dark:border-stone-800">
+              <div class="flex items-center gap-1.5"><span class="text-base">📷</span><h3 class="font-extrabold text-sm">Barcode scannen</h3></div>
+              <button onclick="closeBarcodeScannerModal();" class="text-stone-400 hover:text-stone-700 font-bold">✕</button>
+            </div>
+            <p class="text-xs text-stone-500 font-medium">Halte den Strichcode vor die Kamera deines Handys:</p>
+            
+            <div id="reader" class="w-full overflow-hidden rounded-2xl bg-black min-h-[250px]"></div>
+
+            <div class="flex justify-end pt-2 border-t border-stone-100 dark:border-stone-800">
+              <button onclick="closeBarcodeScannerModal();" class="px-4 py-2 bg-red-600 text-white font-extrabold text-xs rounded-xl shadow-xs">Abbrechen</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
 
     if (state.showFinishModal) {
       const comp = state.items.filter(i => (i.listId || 'list-penny') === state.activeListId && i.isChecked);
@@ -3022,6 +3041,112 @@ function generateWhatsAppMessage() {
   });
   text += `\nErstellt mit meiner Einkaufsapp`;
   return text;
+}
+let html5QrCode = null;
+
+function openBarcodeScannerModal() {
+  state.showScannerModal = true;
+  render();
+  
+  // Kurz warten, bis das HTML-Element da ist, dann Kamera starten
+  setTimeout(() => {
+    startScannerCamera();
+  }, 300);
+}
+
+function closeBarcodeScannerModal() {
+  if (html5QrCode) {
+    html5QrCode.stop().then(() => {
+      html5QrCode.clear();
+      html5QrCode = null;
+    }).catch(err => {
+      html5QrCode = null;
+    });
+  }
+  state.showScannerModal = false;
+  render();
+}
+
+function startScannerCamera() {
+  const scannerContainerId = "reader";
+  if (!document.getElementById(scannerContainerId)) return;
+
+  html5QrCode = new Html5Qrcode(scannerContainerId);
+  const config = { fps: 10, qrbox: { width: 250, height: 150 } };
+
+  html5QrCode.start(
+    { facingMode: "environment" }, // Nutzt die Rückkamera des Handys
+    config,
+    async (decodedText, decodedResult) => {
+      // Barcode erfolgreich gelesen!
+      const barcode = decodedText.trim();
+      
+      // Kamera direkt stoppen nach Erfolg
+      await html5QrCode.stop();
+      html5QrCode.clear();
+      html5QrCode = null;
+      state.showScannerModal = false;
+      
+      showToast(`Barcode erkannt: ${barcode}. Lade Produktdaten... 🔍`);
+      
+      // Abfrage bei Open Food Facts API
+      fetchProductByBarcode(barcode);
+    },
+    (errorMessage) => {
+      // Ignorieren, solange kein Barcode im Bild ist (läuft im Hintergrund weiter)
+    }
+  ).catch(err => {
+    showToast("Kamera konnte nicht gestartet werden ❌");
+  });
+}
+
+async function fetchProductByBarcode(barcode) {
+  try {
+    const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+    const data = await response.json();
+
+    if (data.status === 1 && data.product) {
+      const prodName = data.product.product_name || data.product.brands || `Produkt ${barcode}`;
+      
+      // Prüfen, ob das Produkt schon im Vorratsschrank ist
+      const existingPantry = state.pantry.find(p => p.name.toLowerCase().trim() === prodName.toLowerCase().trim());
+
+      if (existingPantry) {
+        updatePantryPieces(existingPantry.id, 1);
+        showToast(`✨ "${prodName}" im Vorrat gefunden & +1 erhöht!`);
+      } else {
+        // Direkt als neuen Vorrat anlegen
+        const aisle = getProductAisleForMarket(prodName, 'penny');
+        state.pantry.unshift({
+          id: 'pantry-' + Date.now(),
+          name: prodName,
+          shopUnit: 'Packung',
+          pantryUnit: 'Stk.',
+          totalPieces: 1,
+          minPieces: 1,
+          buyQty: 1,
+          itemsPerPack: 1,
+          dailyConsumption: 0.5,
+          intervallAktiv: true,
+          aisleNumber: aisle,
+          lastChecked: Date.now(),
+          lastUpdateDate: getTodayString()
+        });
+        saveState();
+        soundAdd();
+        showToast(`🎉 Neu im Vorrat: "${prodName}"!`);
+        render();
+      }
+    } else {
+      // Fallback, wenn das Produkt nicht in der Datenbank steht
+      const customName = prompt(`Barcode ${barcode} nicht in Datenbank gefunden. Wie heißt das Produkt?`, "Neues Produkt");
+      if (customName && customName.trim()) {
+        addItem({ name: customName.trim() }, 1);
+      }
+    }
+  } catch (err) {
+    showToast("Fehler bei der Internet-Abfrage ❌");
+  }
 }
 
 loadAppState();
