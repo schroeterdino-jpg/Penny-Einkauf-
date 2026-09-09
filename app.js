@@ -1,4 +1,4 @@
-// app.js - Gesamte Logik, State, KI & Rendering (Scanner mit Abfrage: Einkaufsliste vs. Nur Datenbank + Direkt-Preiseingabe)
+// app.js - Gesamte Logik, State, KI & Rendering (Scanner-Fix für weltweite Datenbank-Abfrage)
 
 function getGroqApiKey() {
   let key = localStorage.getItem('dino_groq_api_key_v1');
@@ -3206,6 +3206,13 @@ async function fetchProductByBarcode(barcode) {
     }
 
     const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+    
+    // Fallback falls die API nicht erreichbar ist oder einen Fehler wirft
+    if (!response.ok) {
+      promptUnknownBarcode(barcode, "Neues Produkt");
+      return;
+    }
+
     const data = await response.json();
 
     if (data.status === 1 && data.product) {
@@ -3228,19 +3235,20 @@ async function fetchProductByBarcode(barcode) {
         soundAdd();
         render();
       } else {
-        const customName = prompt(`Barcode ${barcode} (${rawApiName}) nicht in deiner Datenbank. Wie möchtest du ihn nennen?`, rawApiName);
-        if (customName && customName.trim()) {
-          handleScannedProductNameResolved(customName.trim(), barcode);
-        }
+        handleScannedProductNameResolved(rawApiName, barcode);
       }
     } else {
-      const customName = prompt(`Barcode ${barcode} nicht in weltweiter Datenbank. Wie heißt das Produkt?`, "Neues Produkt");
-      if (customName && customName.trim()) {
-        handleScannedProductNameResolved(customName.trim(), barcode);
-      }
+      promptUnknownBarcode(barcode, `Produkt ${barcode}`);
     }
   } catch (err) {
-    showToast("Fehler bei der Internet-Abfrage ❌");
+    promptUnknownBarcode(barcode, `Produkt ${barcode}`);
+  }
+}
+
+function promptUnknownBarcode(barcode, defaultName) {
+  const customName = prompt(`Barcode ${barcode} nicht in weltweiter Datenbank gefunden. Wie heißt das Produkt?`, defaultName);
+  if (customName && customName.trim()) {
+    handleScannedProductNameResolved(customName.trim(), barcode);
   }
 }
 
