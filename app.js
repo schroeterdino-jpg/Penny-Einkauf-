@@ -317,7 +317,11 @@ let state = {
   lastRemovedItem: null,
   showDuplicateModal: false, duplicateSearchTerm: '',
   showExportModal: false, exportTextContent: '',
-  showVoiceDisambiguationModal: false, voiceDisambiguationMatches: []
+  showVoiceDisambiguationModal: false, voiceDisambiguationMatches: [],
+  // NEU FÜR BARCODE-ZUORDNUNG:
+  showBarcodeMatchModal: false,
+  scannedBarcodeData: null,
+  barcodeMatchCandidates: []
 };
 
 async function saveState() {
@@ -370,7 +374,6 @@ async function loadAppState() {
   runAutomaticPantryConsumption();
 }
 
-// Hilfsfunktion: Liefert das aktuelle Datum im Format "YYYY-MM-DD"
 function getTodayString() {
     const now = new Date();
     const year = now.getFullYear();
@@ -2237,6 +2240,49 @@ function render() {
       `;
     }
 
+    // MODAL FÜR BARCODE-ZUORDNUNG (FRAGT DICH, OB ES DEIN ARTIKEL IST)
+    if (state.showBarcodeMatchModal) {
+      const scannedInfo = state.scannedBarcodeData || {};
+      html += `
+        <div class="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+          <div class="bg-white dark:bg-[#1a1a1a] border border-stone-200 dark:border-stone-800 rounded-3xl max-w-md w-full p-4 shadow-2xl space-y-3 text-stone-900 dark:text-stone-100">
+            <div class="flex justify-between items-center pb-2 border-b border-stone-100 dark:border-stone-800">
+              <div class="flex items-center gap-1.5">
+                <span class="text-base">🔍</span>
+                <h3 class="font-extrabold text-sm">Gescannter Artikel zuordnen</h3>
+              </div>
+              <button onclick="state.showBarcodeMatchModal=false; render();" class="text-stone-400 hover:text-stone-700 font-bold">✕</button>
+            </div>
+            
+            <div class="bg-stone-50 dark:bg-stone-800/60 p-3 rounded-2xl border border-stone-200 dark:border-stone-700 text-xs space-y-1">
+              <span class="text-[10px] font-bold text-stone-400 uppercase">Offizieller Name laut Datenbank:</span>
+              <p class="font-black text-stone-900 dark:text-stone-100">${scannedInfo.rawName || 'Unbekannt'}</p>
+            </div>
+
+            <p class="text-xs text-stone-600 dark:text-stone-400 font-medium">Wir haben folgende passende Artikel in deiner Liste/deinem Vorrat gefunden. Ist das einer davon?</p>
+
+            <div class="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
+              ${state.barcodeMatchCandidates.map(cand => `
+                <button onclick="assignBarcodeToExistingProduct('${cand.name.replace(/'/g, "\\'")}')" class="w-full text-left p-3 rounded-2xl bg-stone-50 dark:bg-stone-800 hover:bg-red-500/10 border border-stone-200 dark:border-stone-700 flex justify-between items-center transition-all shadow-xs">
+                  <div>
+                    <span class="font-extrabold text-xs text-stone-900 dark:text-stone-100 block">✨ ${cand.name}</span>
+                    <span class="text-[10px] text-stone-500">Gang ${cand.aisleNumber || 6} • ${cand.shopUnit || 'Packung'}</span>
+                  </div>
+                  <span class="text-xs font-bold text-white bg-red-600 px-3 py-1 rounded-xl shrink-0">Das ist er ✓</span>
+                </button>
+              `).join('')}
+            </div>
+
+            <div class="pt-2 border-t border-stone-100 dark:border-stone-800 space-y-2">
+              <button onclick="assignBarcodeAsNewProduct()" class="w-full py-2.5 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 font-bold text-xs rounded-xl border border-stone-200 dark:border-stone-700 shadow-xs text-center">
+                Nein, als neuen Artikel "${scannedInfo.rawName}" anlegen
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
     if (state.showExportModal) {
       html += `
         <div class="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
@@ -3081,7 +3127,7 @@ function startScannerCamera() {
       html5QrCode = null;
       state.showScannerModal = false;
       
-      showToast(`Barcode erkannt: ${barcode}. Lade Produktdaten... 🔍`);
+      showToast(`Barcode erkannt: ${barcode}. Prüfe Datenbank... 🔍`);
       fetchProductByBarcode(barcode);
     },
     (errorMessage) => {}
@@ -3096,43 +3142,91 @@ async function fetchProductByBarcode(barcode) {
     const data = await response.json();
 
     if (data.status === 1 && data.product) {
-      const prodName = data.product.product_name || data.product.brands || `Produkt ${barcode}`;
+      const rawApiName = (data.product.product_name || data.product.brands || `Produkt ${barcode}`).trim();
       
-      const existingPantry = state.pantry.find(p => p.name.toLowerCase().trim() === prodName.toLowerCase().trim());
+      const catalog = getCatalog();
+      const lowerApiName = rawApiName.toLowerCase();
+      
+      // Intelligente Suche nach passenden Artikeln (z.B. Wörter wie "energy", "pants", "cola" im Namen)
+      const queryWords = lowerApiName.split(/\s+/).filter(w => w.length > 2);
+      
+      const matchingCandidates = catalog.filter(p => {
+        const pNameLower = p.name.toLowerCase();
+        // Entweder Namensgleichheit oder Überlappung bei wichtigen Schlüsselwörtern
+        if (pNameLower.includes(lowerApiName) || lowerApiName.includes(pNameLower)) return true;
+        return queryWords.some(w => pNameLower.includes(w));
+      });
 
-      if (existingPantry) {
-        updatePantryPieces(existingPantry.id, 1);
-        showToast(`✨ "${prodName}" im Vorrat gefunden & +1 erhöht!`);
-      } else {
-        const aisle = getProductAisleForMarket(prodName, 'penny');
-        state.pantry.unshift({
-          id: 'pantry-' + Date.now(),
-          name: prodName,
-          shopUnit: 'Packung',
-          pantryUnit: 'Stk.',
-          totalPieces: 1,
-          minPieces: 1,
-          buyQty: 1,
-          itemsPerPack: 1,
-          dailyConsumption: 0.5,
-          intervallAktiv: true,
-          aisleNumber: aisle,
-          lastChecked: Date.now(),
-          lastUpdateDate: getTodayString()
-        });
-        saveState();
+      if (matchingCandidates.length > 0) {
+        // Wir fragen Dino per modaler Box, ob das einer seiner Artikel ist!
+        state.scannedBarcodeData = { barcode, rawName: rawApiName };
+        state.barcodeMatchCandidates = matchingCandidates.slice(0, 5); // Max 5 Vorschläge
+        state.showBarcodeMatchModal = true;
         soundAdd();
-        showToast(`🎉 Neu im Vorrat: "${prodName}"!`);
         render();
+      } else {
+        // Nichts gefunden -> Direkt als neuen Artikel anfragen oder eintragen
+        const customName = prompt(`Barcode ${barcode} (${rawApiName}) nicht in deiner Liste gefunden. Wie möchtest du ihn nennen?`, rawApiName);
+        if (customName && customName.trim()) {
+          processScannedProductFinal(customName.trim());
+        }
       }
     } else {
-      const customName = prompt(`Barcode ${barcode} nicht in Datenbank gefunden. Wie heißt das Produkt?`, "Neues Produkt");
+      const customName = prompt(`Barcode ${barcode} nicht in weltweiter Datenbank. Wie heißt das Produkt?`, "Neues Produkt");
       if (customName && customName.trim()) {
-        addItem({ name: customName.trim() }, 1);
+        processScannedProductFinal(customName.trim());
       }
     }
   } catch (err) {
     showToast("Fehler bei der Internet-Abfrage ❌");
+  }
+}
+
+function assignBarcodeToExistingProduct(chosenName) {
+  state.showBarcodeMatchModal = false;
+  processScannedProductFinal(chosenName);
+}
+
+function assignBarcodeAsNewProduct() {
+  const raw = state.scannedBarcodeData ? state.scannedBarcodeData.rawName : 'Neues Produkt';
+  const customName = prompt("Wie soll dieser Artikel in deiner Liste heißen?", raw);
+  state.showBarcodeMatchModal = false;
+  if (customName && customName.trim()) {
+    processScannedProductFinal(customName.trim());
+  }
+}
+
+function processScannedProductFinal(finalProductName) {
+  const existingPantry = state.pantry.find(p => p.name.toLowerCase().trim() === finalProductName.toLowerCase().trim());
+
+  if (existingPantry) {
+    updatePantryPieces(existingPantry.id, 1);
+    showToast(`✨ "${finalProductName}" im Vorrat gefunden & +1 erhöht!`);
+  } else {
+    const aisle = getProductAisleForMarket(finalProductName, 'penny');
+    const defaultUnitPrice = getBaseUnitPrice(finalProductName, 0);
+    const defaultDeposit = getBaseUnitDeposit(finalProductName, 0);
+    const defaultShopUnit = 'Packung';
+
+    state.pantry.unshift({
+      id: 'pantry-' + Date.now(),
+      name: finalProductName,
+      shopUnit: defaultShopUnit,
+      pantryUnit: 'Stk.',
+      totalPieces: 1,
+      minPieces: 1,
+      buyQty: 1,
+      itemsPerPack: 1,
+      dailyConsumption: 0.5,
+      intervallAktiv: true,
+      aisleNumber: aisle,
+      lastChecked: Date.now(),
+      lastUpdateDate: getTodayString()
+    });
+    saveState();
+    soundAdd();
+    showToast(`🎉 Im Vorrat erfasst: "${finalProductName}"!`);
+    render();
   }
 }
 
