@@ -1,4 +1,4 @@
-// app.js - Gesamte Logik, State, KI & Rendering (Scanner mit Abfrage: Einkaufsliste vs. Nur Datenbank)
+// app.js - Gesamte Logik, State, KI & Rendering (Scanner mit Abfrage: Einkaufsliste vs. Nur Datenbank + Direkt-Preiseingabe)
 
 function getGroqApiKey() {
   let key = localStorage.getItem('dino_groq_api_key_v1');
@@ -471,7 +471,7 @@ function getCategoryType(name) {
   if (/apfel|banane|gemüse|salat|tomate|gurke|obst|erdbeeren|zwiebeln|kartoffel|karotte|karotten|möhre|möhren|trauben|kiwi|paprika/i.test(l)) return 'produce';
   if (/brot|brötchen|toast|croissant|backware|kuchen|baguette|ciabatta/i.test(l)) return 'bakery';
   if (/cola|fanta|sprite|wasser|selter|energy|bier|saft|wein|getränk|limo|schorle|mate|sekt|bacardi|rum|wodka|gin|whisky|likör/i.test(l)) return 'drinks';
-  if (/käse|milch|joghurt|butter|quark|gouda|sahne|frischkäse|mozzarella|parmesan|kefir/i.test(l)) return 'dairy';
+  if (/käse|milch|joghurt|butter|quark|quark|gouda|sahne|frischkäse|mozzarella|parmesan|kefir/i.test(l)) return 'dairy';
   if (/pizza|fischstäbchen|eis|tiefkühl|tk-|baguette|pommes|spinat|gemüsemischung/i.test(l)) return 'frozen';
   if (/chips|schoki|schokolade|knabber|süß|kekse|gummibärchen|erdnüsse|flips|popcorn|riegel/i.test(l)) return 'snacks';
   if (/katz|hund|tier|fressnapf|streu/i.test(l)) return 'pet';
@@ -2289,9 +2289,12 @@ function render() {
 
     if (state.showScanIntentModal) {
       const scannedInfo = state.scannedBarcodeData || {};
+      const currentDefaultPrice = getBaseUnitPrice(scannedInfo.finalName, 0);
+      const currentDeposit = getBaseUnitDeposit(scannedInfo.finalName, 0);
+
       html += `
         <div class="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
-          <div class="bg-white dark:bg-[#1a1a1a] border border-stone-200 dark:border-stone-800 rounded-3xl max-w-sm w-full p-4 shadow-2xl space-y-3 text-stone-900 dark:text-stone-100 text-center">
+          <div class="bg-white dark:bg-[#1a1a1a] border border-stone-200 dark:border-stone-800 rounded-3xl max-w-sm w-full p-4 shadow-2xl space-y-3 text-stone-900 dark:text-stone-100">
             <div class="flex justify-between items-center pb-2 border-b border-stone-100 dark:border-stone-800">
               <div class="flex items-center gap-1.5">
                 <span class="text-base">📷</span>
@@ -2300,12 +2303,23 @@ function render() {
               <button onclick="state.showScanIntentModal=false; render();" class="text-stone-400 hover:text-stone-700 font-bold">✕</button>
             </div>
             
-            <div class="bg-stone-50 dark:bg-stone-800/60 p-3 rounded-2xl border border-stone-200 dark:border-stone-700 text-xs">
-              <span class="text-[10px] font-bold text-stone-400 uppercase block">Erkanntes Produkt:</span>
-              <p class="font-black text-stone-900 dark:text-stone-100 text-sm mt-0.5">${scannedInfo.finalName || 'Produkt'}</p>
+            <div class="space-y-1">
+              <label class="text-[10px] font-bold text-stone-400 uppercase block">Produktname anpassen:</label>
+              <input type="text" id="scan-modal-name-input" value="${scannedInfo.finalName || ''}" class="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 rounded-xl px-3 py-2 text-xs font-bold shadow-xs focus:outline-none focus:border-red-600" />
             </div>
 
-            <p class="text-xs text-stone-600 dark:text-stone-400 font-medium">Was möchtest du mit diesem Artikel tun?</p>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="text-[10px] font-bold text-stone-400 uppercase block">Preis (€):</label>
+                <input type="number" step="0.01" min="0" id="scan-modal-price-input" value="${currentDefaultPrice > 0 ? currentDefaultPrice.toFixed(2) : ''}" placeholder="0.00" class="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 rounded-xl px-3 py-2 text-xs font-bold shadow-xs focus:outline-none focus:border-red-600" />
+              </div>
+              <div>
+                <label class="text-[10px] font-bold text-stone-400 uppercase block">Pfand (€):</label>
+                <input type="number" step="0.01" min="0" id="scan-modal-deposit-input" value="${currentDeposit > 0 ? currentDeposit.toFixed(2) : '0.00'}" placeholder="0.00" class="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 rounded-xl px-3 py-2 text-xs font-bold shadow-xs focus:outline-none focus:border-red-600" />
+              </div>
+            </div>
+
+            <p class="text-xs text-stone-600 dark:text-stone-400 font-medium pt-1">Was möchtest du mit diesem Artikel tun?</p>
 
             <div class="space-y-2 pt-1">
               <button onclick="executeScanIntent('cart')" class="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs rounded-2xl shadow-xs flex items-center justify-center gap-2">
@@ -3261,16 +3275,46 @@ function executeScanIntent(intent) {
     return;
   }
 
-  const { barcode, finalName } = scanned;
+  const { barcode } = scanned;
+
+  const nameInput = document.getElementById('scan-modal-name-input');
+  const priceInput = document.getElementById('scan-modal-price-input');
+  const depositInput = document.getElementById('scan-modal-deposit-input');
+
+  const finalName = nameInput ? nameInput.value.trim() : scanned.finalName;
+  const enteredPrice = priceInput && priceInput.value.trim() !== '' ? parseFloat(priceInput.value) : null;
+  const enteredDeposit = depositInput && depositInput.value.trim() !== '' ? parseFloat(depositInput.value) : 0;
+
+  if (!finalName) {
+    state.showScanIntentModal = false;
+    render();
+    return;
+  }
 
   if (barcode) {
     state.savedBarcodes[barcode] = finalName;
   }
-  persistProduct({ name: finalName });
+
+  if (enteredPrice !== null && !isNaN(enteredPrice)) {
+    state.savedPrices[finalName] = enteredPrice;
+  }
+  if (!isNaN(enteredDeposit)) {
+    state.savedDeposits[finalName] = enteredDeposit;
+  }
+
+  persistProduct({ 
+    name: finalName, 
+    defaultPrice: enteredPrice !== null && !isNaN(enteredPrice) ? enteredPrice : undefined,
+    depositAmount: !isNaN(enteredDeposit) ? enteredDeposit : undefined
+  });
 
   if (intent === 'cart') {
-    addItem({ name: finalName }, 1);
-    showToast(`🛒 "${finalName}" zur Einkaufsliste hinzugefügt!`);
+    addItem({ 
+      name: finalName, 
+      defaultPrice: enteredPrice !== null && !isNaN(enteredPrice) ? enteredPrice : undefined,
+      depositAmount: !isNaN(enteredDeposit) ? enteredDeposit : undefined
+    }, 1);
+    showToast(`🛒 "${finalName}" (${enteredPrice !== null ? enteredPrice.toFixed(2) + ' €' : ''}) zur Einkaufsliste hinzugefügt!`);
   } else {
     showToast(`🗄️ "${finalName}" in Produktdatenbank gespeichert!`);
   }
