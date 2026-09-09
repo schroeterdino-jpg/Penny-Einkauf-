@@ -383,21 +383,18 @@ function runAutomaticPantryConsumption() {
   const today = getTodayString();
   
   state.pantry.forEach(p => {
-    // Falls noch kein Datum gespeichert ist, setzen wir es auf heute
     if (!p.lastUpdateDate) {
       p.lastUpdateDate = today;
       p.lastChecked = Date.now();
       return;
     }
 
-    // Wir vergleichen die echten Kalendertage
     const lastDate = new Date(p.lastUpdateDate);
     const currentDate = new Date(today);
     
     const diffTime = currentDate - lastDate;
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-    // Wenn seit dem letzten Abzug mindestens 1 neuer Kalendertag vergangen ist
     if (diffDays > 0) {
       if (p.intervallAktiv !== false) {
         const consumed = diffDays * (p.dailyConsumption || 1);
@@ -1304,7 +1301,6 @@ function buildAppContextPrompt() {
   const openItems = activeListItems.map(i => `- ${i.quantity}x ${i.name} (${i.packageUnit||'Packung'})`).join('\n');
   const favoritesList = cleanDuplicateList(state.favorites).map(f => (typeof f === 'string' ? f : f.name)).join(', ');
   
-  // Vorratsschrank für den Bot aufbereitet
   const pantrySummary = state.pantry.map(p => {
     const daysLeft = calculatePantryDaysLeft(p);
     const status = (p.totalPieces || 0) < (p.minPieces || 1) || (daysLeft !== null && daysLeft <= 2) ? '🚨 KRITISCH / FAST LEER' : '✅ Ausreichend';
@@ -1867,6 +1863,7 @@ function render() {
                 <p class="text-[11px] text-stone-500 font-medium">Fester Verbrauch pro Tag 🤖</p>
               </div>
               <div class="flex gap-1.5">
+                <button onclick="openBarcodeScannerModal();" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold px-3 py-2 rounded-xl shadow-xs">📷 Scannen</button>
                 <button onclick="addMissingPantryToShopping();" class="bg-red-600 hover:bg-red-700 text-white text-xs font-extrabold px-3 py-2 rounded-xl shadow-xs">+ Fehlendes auf Liste</button>
                 <button onclick="state.showNewPantryModal=true; render();" class="bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-xs font-extrabold px-3 py-2 rounded-xl shadow-xs">+ Neu</button>
               </div>
@@ -3048,7 +3045,6 @@ function openBarcodeScannerModal() {
   state.showScannerModal = true;
   render();
   
-  // Kurz warten, bis das HTML-Element da ist, dann Kamera starten
   setTimeout(() => {
     startScannerCamera();
   }, 300);
@@ -3075,26 +3071,20 @@ function startScannerCamera() {
   const config = { fps: 10, qrbox: { width: 250, height: 150 } };
 
   html5QrCode.start(
-    { facingMode: "environment" }, // Nutzt die Rückkamera des Handys
+    { facingMode: "environment" },
     config,
     async (decodedText, decodedResult) => {
-      // Barcode erfolgreich gelesen!
       const barcode = decodedText.trim();
       
-      // Kamera direkt stoppen nach Erfolg
       await html5QrCode.stop();
       html5QrCode.clear();
       html5QrCode = null;
       state.showScannerModal = false;
       
       showToast(`Barcode erkannt: ${barcode}. Lade Produktdaten... 🔍`);
-      
-      // Abfrage bei Open Food Facts API
       fetchProductByBarcode(barcode);
     },
-    (errorMessage) => {
-      // Ignorieren, solange kein Barcode im Bild ist (läuft im Hintergrund weiter)
-    }
+    (errorMessage) => {}
   ).catch(err => {
     showToast("Kamera konnte nicht gestartet werden ❌");
   });
@@ -3108,14 +3098,12 @@ async function fetchProductByBarcode(barcode) {
     if (data.status === 1 && data.product) {
       const prodName = data.product.product_name || data.product.brands || `Produkt ${barcode}`;
       
-      // Prüfen, ob das Produkt schon im Vorratsschrank ist
       const existingPantry = state.pantry.find(p => p.name.toLowerCase().trim() === prodName.toLowerCase().trim());
 
       if (existingPantry) {
         updatePantryPieces(existingPantry.id, 1);
         showToast(`✨ "${prodName}" im Vorrat gefunden & +1 erhöht!`);
       } else {
-        // Direkt als neuen Vorrat anlegen
         const aisle = getProductAisleForMarket(prodName, 'penny');
         state.pantry.unshift({
           id: 'pantry-' + Date.now(),
@@ -3138,7 +3126,6 @@ async function fetchProductByBarcode(barcode) {
         render();
       }
     } else {
-      // Fallback, wenn das Produkt nicht in der Datenbank steht
       const customName = prompt(`Barcode ${barcode} nicht in Datenbank gefunden. Wie heißt das Produkt?`, "Neues Produkt");
       if (customName && customName.trim()) {
         addItem({ name: customName.trim() }, 1);
