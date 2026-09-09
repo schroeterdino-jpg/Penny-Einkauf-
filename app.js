@@ -1304,13 +1304,20 @@ function buildAppContextPrompt() {
   const openItems = activeListItems.map(i => `- ${i.quantity}x ${i.name} (${i.packageUnit||'Packung'})`).join('\n');
   const favoritesList = cleanDuplicateList(state.favorites).map(f => (typeof f === 'string' ? f : f.name)).join(', ');
   
+  // Vorratsschrank für den Bot aufbereitet
+  const pantrySummary = state.pantry.map(p => {
+    const daysLeft = calculatePantryDaysLeft(p);
+    const status = (p.totalPieces || 0) < (p.minPieces || 1) || (daysLeft !== null && daysLeft <= 2) ? '🚨 KRITISCH / FAST LEER' : '✅ Ausreichend';
+    return `- ${p.name}: ${p.totalPieces} ${p.pantryUnit || 'Stk.'} übrig (Min: ${p.minPieces}, Status: ${status})`;
+  }).join('\n');
+
   const allListsInfo = state.lists.map(l => `- Markt/Liste: "${l.name}" (ID: "${l.id}")`).join('\n');
   
   const dbCatalog = getCatalog();
   const catalogSummary = dbCatalog.slice(0, 150).map(p => p.name).join(', ');
 
   return `Du bist Dinos persönlicher Alltags-, Koch- und Einkaufs-Assistent für Schwarzenbek. 
-Du hast vollständigen Einblick in Dinos echte Einkaufslisten, Favoriten und Produktdatenbank:
+Du hast vollständigen Einblick in Dinos echte Einkaufslisten, Favoriten, den **Vorratsschrank** und die Produktdatenbank:
 
 VERFÜGBARE MÄRKTE / LISTEN:
 [
@@ -1325,6 +1332,11 @@ ${openItems || 'Die Einkaufsliste ist aktuell leer.'}
 ]
 
 FAVORITEN: [ ${favoritesList} ]
+
+VORRATSSCHRANK (AKTUELLER BESTAND & WARNUNGEN):
+[
+${pantrySummary || 'Der Vorratsschrank ist leer.'}
+]
 
 AUSGEWÄHLTE PRODUKTDATENBANK (WICHTIG FÜR EXAKTE NAMEN!):
 [ ${catalogSummary} ]
@@ -3000,7 +3012,7 @@ function moveAisle(index, direction) {
 function generateWhatsAppMessage() {
   const curList = state.lists.find(l => l.id === state.activeListId) || state.lists[0];
   const curItems = state.items.filter(i => (i.listId || 'list-penny') === state.activeListId);
-  const openItems = curItems.filter(i => !i.isChecked);
+  openItems = curItems.filter(i => !i.isChecked);
   
   if (openItems.length === 0) return `🛒 Meine Einkaufsliste (${curList.name}) ist aktuell leer!`;
 
