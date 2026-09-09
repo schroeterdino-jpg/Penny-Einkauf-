@@ -370,19 +370,41 @@ async function loadAppState() {
   runAutomaticPantryConsumption();
 }
 
+// Hilfsfunktion: Liefert das aktuelle Datum im Format "YYYY-MM-DD"
+function getTodayString() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
 function runAutomaticPantryConsumption() {
-  const now = Date.now();
-  const oneDayMs = 24 * 60 * 60 * 1000;
+  const today = getTodayString();
+  
   state.pantry.forEach(p => {
-    if (!p.lastChecked) p.lastChecked = now;
-    const diffDays = (now - p.lastChecked) / oneDayMs;
-    if (diffDays >= 1) {
-      const fullDays = Math.floor(diffDays);
+    // Falls noch kein Datum gespeichert ist, setzen wir es auf heute
+    if (!p.lastUpdateDate) {
+      p.lastUpdateDate = today;
+      p.lastChecked = Date.now();
+      return;
+    }
+
+    // Wir vergleichen die echten Kalendertage
+    const lastDate = new Date(p.lastUpdateDate);
+    const currentDate = new Date(today);
+    
+    const diffTime = currentDate - lastDate;
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    // Wenn seit dem letzten Abzug mindestens 1 neuer Kalendertag vergangen ist
+    if (diffDays > 0) {
       if (p.intervallAktiv !== false) {
-        const consumed = fullDays * (p.dailyConsumption || 1);
+        const consumed = diffDays * (p.dailyConsumption || 1);
         p.totalPieces = Math.max(0, parseFloat(((p.totalPieces || 0) - consumed).toFixed(2)));
       }
-      p.lastChecked = p.lastChecked + (fullDays * oneDayMs);
+      p.lastUpdateDate = today;
+      p.lastChecked = Date.now();
     }
   });
   saveState();
@@ -1012,6 +1034,7 @@ function updatePantryPieces(id, delta) {
     }
     
     p.lastChecked = Date.now();
+    p.lastUpdateDate = getTodayString();
     saveState(); 
     render();
   }
@@ -1107,7 +1130,7 @@ function saveNewPantryItem() {
     id: 'pantry-' + Date.now(), name: n, shopUnit: shopUnit, pantryUnit: pantryUnit, 
     totalPieces: pieces, minPieces: min, buyQty: buyQty, itemsPerPack: itemsPerPack, dailyConsumption: daily, 
     intervallAktiv: intervallInp ? intervallInp.checked : true,
-    aisleNumber: a, lastChecked: Date.now() 
+    aisleNumber: a, lastChecked: Date.now(), lastUpdateDate: getTodayString()
   });
   state.showNewPantryModal = false; state.pantrySearchQuery = ''; soundAdd(); saveState(); showToast(`Vorrat "${n}" gespeichert`); render();
 }
@@ -1180,7 +1203,7 @@ function confirmFinishShopping() {
   });
 
   let pantryUpdated = 0;
-  const now = Date.now();
+  const todayStr = getTodayString();
 
   compItems.forEach(ci => {
     const matchP = state.pantry.find(p => p.name.toLowerCase().trim() === ci.name.toLowerCase().trim());
@@ -1189,7 +1212,8 @@ function confirmFinishShopping() {
       const totalUnitsToAdd = perPack * (ci.quantity || 1);
       
       matchP.totalPieces = parseFloat(((matchP.totalPieces || 0) + totalUnitsToAdd).toFixed(2));
-      matchP.lastChecked = now;
+      matchP.lastChecked = Date.now();
+      matchP.lastUpdateDate = todayStr;
       pantryUpdated++;
     }
   });
@@ -2899,6 +2923,7 @@ function saveEditPantryModal(id) {
 
   state.editingPantryModalItem = null;
   item.lastChecked = Date.now();
+  item.lastUpdateDate = getTodayString();
   soundAdd();
   saveState();
   showToast('Vorrat aktualisiert ✓');
