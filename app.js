@@ -1845,7 +1845,7 @@ function render() {
                     return `
                       <div class="${itemBoxPad} flex items-center justify-between gap-3 hover:bg-stone-50/50 dark:hover:bg-stone-800/35 transition-colors ${itemBg}" onclick="toggleItemChecked('${item.id}')" title="Antippen zum Abhaken">
                         <div class="flex items-center gap-3.5 flex-1 min-w-0">
-                          ${itemImg ? `<img src="${itemImg}" class="w-10 h-10 object-cover rounded-2xl shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs" />` : '<div class="w-10 h-10 rounded-2xl bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-sm shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs">🛒</div>'}
+${itemImg && itemImg.trim() !== '' ? `<img src="${itemImg}" class="w-10 h-10 object-cover rounded-2xl shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs" onerror="this.style.display='none'" />` : '<div class="w-10 h-10 rounded-2xl bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-sm shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs">🛒</div>'}
                           <div class="min-w-0 flex-1 py-0.5">
                             <div class="flex items-center gap-2.5 flex-wrap">
                               <button onclick="event.stopPropagation(); toggleFavorite('${item.name.replace(/'/g, "\\'")}');" class="text-base ${isFav ? 'text-amber-400 font-black' : 'text-stone-300 dark:text-stone-600 hover:text-amber-400'} transition-colors" title="${isFav ? 'Aus Favoriten entfernen' : 'Als Favorit speichern'}">${isFav ? '★' : '☆'}</button>
