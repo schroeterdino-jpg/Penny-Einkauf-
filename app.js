@@ -1,4 +1,4 @@
-// app.js - Gesamte Logik, State, KI & Rendering (Mit Bild-Integration für Open Food Facts)
+// app.js - Komplettversion inklusive Open Food Facts Bild-Integration über Barcodes
 
 function getGroqApiKey() {
   let key = localStorage.getItem('dino_groq_api_key_v1');
@@ -13,6 +13,33 @@ function getGroqApiKey() {
 
 let recognition = null;
 let isListening = false;
+
+// Open Food Facts Bild-URL Generator basierend auf dem Barcode
+function getOpenFoodFactsImageUrl(barcodeOrName) {
+  if (!barcodeOrName) return '';
+  if (/^\d{8,14}$/.test(barcodeOrName)) {
+    let b = barcodeOrName;
+    let path = b;
+    if (b.length === 13) {
+      path = `${b[0]}/${b[1]}${b[2]}/${b[3]}${b[4]}/${b.slice(5)}`;
+    } else if (b.length === 12) {
+      path = `0/${b[0]}${b[1]}/${b[2]}${b[3]}/${b.slice(4)}`;
+    }
+    return `https://images.openfoodfacts.org/images/products/${path}/front_de.400.jpg`;
+  }
+  return '';
+}
+
+function getItemImageForName(itemName) {
+  if (!itemName) return '';
+  let foundUrl = '';
+  Object.keys(state.savedBarcodes || {}).forEach(bc => {
+    if (state.savedBarcodes[bc] && state.savedBarcodes[bc].toLowerCase().trim() === itemName.toLowerCase().trim()) {
+      foundUrl = getOpenFoodFactsImageUrl(bc);
+    }
+  });
+  return foundUrl;
+}
 
 async function handleSpokenInput(spokenText) {
   if (!spokenText) return;
@@ -99,7 +126,7 @@ function processDirectSpeechMatch(spokenText) {
     showToast(`Mehrere Treffer für "${spokenText}" – bitte auswählen! 🔍`);
     return;
   } else if (matches.length === 1) {
-    addItem({ name: matches[0].name, shopUnit: matches[0].shopUnit, defaultPrice: matches[0].defaultPrice, depositAmount: matches[0].depositAmount, aisleNumber: matches[0].aisleNumber, imageUrl: matches[0].imageUrl }, 1, matches[0].shopUnit);
+    addItem({ name: matches[0].name, shopUnit: matches[0].shopUnit, defaultPrice: matches[0].defaultPrice, depositAmount: matches[0].depositAmount, aisleNumber: matches[0].aisleNumber }, 1, matches[0].shopUnit);
     showToast(`Hinzugefügt: "${matches[0].name}" ✓`);
     return;
   }
@@ -321,8 +348,7 @@ let state = {
   showBarcodeMatchModal: false,
   scannedBarcodeData: null,
   barcodeMatchCandidates: [],
-  savedBarcodes: {},
-  savedImages: {}
+  savedBarcodes: {}
 };
 
 async function saveState() {
@@ -340,7 +366,6 @@ async function loadAppState() {
     if (savedState) {
       state = Object.assign(state, savedState);
       if (!state.savedBarcodes) state.savedBarcodes = {};
-      if (!state.savedImages) state.savedImages = {};
     } else {
       try {
         const oldItems = localStorage.getItem('penny_items_v124');
@@ -594,8 +619,7 @@ function getExactProductInfo(name, marketKey = 'penny') {
       aisleNumber: aisle,
       defaultPrice: ex.defaultPrice || 0,
       depositAmount: ex.depositAmount || 0,
-      shopUnit: ex.shopUnit || 'Packung',
-      imageUrl: ex.imageUrl || ''
+      shopUnit: ex.shopUnit || 'Packung'
     };
   }
 
@@ -603,7 +627,7 @@ function getExactProductInfo(name, marketKey = 'penny') {
   if (/cola|fanta|sprite|wasser|selter|energy|bier|saft|wein|bacardi|rum|wodka|gin|whisky/i.test(l)) unit = 'Flasche';
   else if (/apfel|banane|gemüse|salat|tomate|gurke|obst|karotte|karotten|möhre|möhren/i.test(l)) unit = 'Stk.';
 
-  return { aisleNumber: aisle, defaultPrice: 0, depositAmount: 0, shopUnit: unit, imageUrl: '' };
+  return { aisleNumber: aisle, defaultPrice: 0, depositAmount: 0, shopUnit: unit };
 }
 
 function persistProduct(p, oldName = null) {
@@ -623,7 +647,6 @@ function persistProduct(p, oldName = null) {
 
     if (state.savedPrices[oldName]) { state.savedPrices[newName] = state.savedPrices[oldName]; delete state.savedPrices[oldName]; }
     if (state.savedDeposits[oldName]) { state.savedDeposits[newName] = state.savedDeposits[oldName]; delete state.savedDeposits[oldName]; }
-    if (state.savedImages && state.savedImages[oldName]) { state.savedImages[newName] = state.savedImages[oldName]; delete state.savedImages[oldName]; }
 
     state.favorites = cleanDuplicateList(state.favorites.map(f => (String(f).toLowerCase().trim() === oldLower ? newName : f)));
 
@@ -658,19 +681,12 @@ function persistProduct(p, oldName = null) {
     setProductAisleForMarket(newName, p.aisleNumber, marketKey);
   }
 
-  if (p.imageUrl) {
-    if (!state.savedImages) state.savedImages = {};
-    state.savedImages[newName] = p.imageUrl;
-  }
-
   const cat = getCatalog();
   const exist = cat.find(x => x.name.toLowerCase().trim() === newLower);
   if (exist) {
     if (p.shopUnit && p.shopUnit !== 'Stk.') exist.shopUnit = p.shopUnit;
     if (p.defaultPrice !== undefined && p.defaultPrice > 0) exist.defaultPrice = p.defaultPrice;
     if (p.depositAmount !== undefined) exist.depositAmount = p.depositAmount;
-    if (p.imageUrl) exist.imageUrl = p.imageUrl;
-    else if (state.savedImages && state.savedImages[newName]) exist.imageUrl = state.savedImages[newName];
     
     const pantryMatch = state.pantry.find(px => px.name.toLowerCase().trim() === newLower);
     if (pantryMatch && p.shopUnit) pantryMatch.shopUnit = p.shopUnit;
@@ -683,8 +699,7 @@ function persistProduct(p, oldName = null) {
     aisleNumber: p.aisleNumber !== undefined ? parseInt(p.aisleNumber, 10) : info.aisleNumber,
     defaultPrice: p.defaultPrice !== undefined ? p.defaultPrice : info.defaultPrice,
     depositAmount: p.depositAmount !== undefined ? p.depositAmount : info.depositAmount,
-    shopUnit: p.shopUnit || info.shopUnit,
-    imageUrl: p.imageUrl || (state.savedImages && state.savedImages[newName]) || info.imageUrl || ''
+    shopUnit: p.shopUnit || info.shopUnit
   };
   state.customProducts.push(np); saveState(); return np;
 }
@@ -705,8 +720,7 @@ function exportAppDataSafe() {
     customMarketAisles: state.customMarketAisles,
     marketOverrides: state.marketOverrides,
     purchaseHistory: state.purchaseHistory,
-    savedBarcodes: state.savedBarcodes,
-    savedImages: state.savedImages
+    savedBarcodes: state.savedBarcodes
   };
   state.exportTextContent = JSON.stringify(backupData, null, 2);
   state.showExportModal = true;
@@ -735,7 +749,6 @@ function importAppDataText() {
       state.marketOverrides = parsed.marketOverrides || {};
       state.purchaseHistory = parsed.purchaseHistory || [];
       state.savedBarcodes = parsed.savedBarcodes || {};
-      state.savedImages = parsed.savedImages || {};
       saveState();
       soundComplete();
       showToast("Backup erfolgreich eingespielt! 🎉");
@@ -763,12 +776,6 @@ function getBaseUnitDeposit(n, fb = 0) {
   if (state.savedDeposits[n] !== undefined) return state.savedDeposits[n];
   const m = getCatalog().find(p => p.name.toLowerCase().trim() === n.toLowerCase().trim());
   return (m && m.depositAmount !== undefined) ? m.depositAmount : fb;
-}
-
-function getProductImageUrl(n) {
-  if (state.savedImages && state.savedImages[n]) return state.savedImages[n];
-  const m = getCatalog().find(p => p.name.toLowerCase().trim() === n.toLowerCase().trim());
-  return (m && m.imageUrl) ? m.imageUrl : '';
 }
 
 function calculateItemPriceInfo(it) {
@@ -852,7 +859,6 @@ function addItem(prod, qty = 1, customUnit = null, targetListId = null) {
   if (!cl) return;
 
   const detectedPrice = parsed.price !== null ? parsed.price : (prod.defaultPrice !== undefined && prod.defaultPrice !== null ? prod.defaultPrice : null);
-  const detectedImage = prod.imageUrl || (typeof prod === 'object' ? prod.imageUrl : null);
 
   const pantryObj = state.pantry.find(p => p.name.toLowerCase().trim() === cl.toLowerCase());
   
@@ -865,9 +871,8 @@ function addItem(prod, qty = 1, customUnit = null, targetListId = null) {
   const finalUnit = customUnit || defaultShopUnit;
 
   const resolvedAisle = (prod.aisleNumber !== undefined && prod.aisleNumber !== null) ? prod.aisleNumber : getProductAisleForMarket(cl, marketKey);
-  const imgUrlToUse = detectedImage || getProductImageUrl(cl) || exactInfo.imageUrl;
   
-  const sp = persistProduct({ ...prod, name: cl, shopUnit: finalUnit, aisleNumber: resolvedAisle, imageUrl: imgUrlToUse });
+  const sp = persistProduct({ ...prod, name: cl, shopUnit: finalUnit, aisleNumber: resolvedAisle });
   
   const curItems = state.items.filter(i => (i.listId || 'list-penny') === targetLId);
   const existingListItem = curItems.find(i => i.name.toLowerCase().trim() === cl.toLowerCase());
@@ -882,10 +887,6 @@ function addItem(prod, qty = 1, customUnit = null, targetListId = null) {
   if (dep >= 0) {
     state.savedDeposits[cl] = dep;
   }
-  if (imgUrlToUse) {
-    if (!state.savedImages) state.savedImages = {};
-    state.savedImages[cl] = imgUrlToUse;
-  }
 
   if (existingListItem) {
     existingListItem.quantity += qty; 
@@ -897,7 +898,6 @@ function addItem(prod, qty = 1, customUnit = null, targetListId = null) {
       existingListItem.estimatedPrice = finalPrice;
     }
     if (customUnit) existingListItem.packageUnit = customUnit;
-    if (imgUrlToUse) existingListItem.imageUrl = imgUrlToUse;
     showToast(`"${cl}" auf ${curList.name} aktualisiert ✓`);
   } else {
     state.items.unshift({
@@ -911,8 +911,7 @@ function addItem(prod, qty = 1, customUnit = null, targetListId = null) {
       estimatedPrice: finalPrice > 0 ? finalPrice : (sp ? sp.defaultPrice : 0), 
       depositAmount: dep, 
       promoPrice: null, 
-      promoPercent: null,
-      imageUrl: imgUrlToUse || ''
+      promoPercent: null
     });
     showToast(`"${cl}" zu ${curList.name} hinzugefügt ✓`);
   }
@@ -930,7 +929,6 @@ function addAllFavoritesToList() {
   state.favorites.forEach(fav => {
     let fName = '';
     let fUnit = 'Packung';
-    let fImg = '';
     
     if (typeof fav === 'string') {
       fName = fav;
@@ -938,16 +936,14 @@ function addAllFavoritesToList() {
       if (foundProd) {
         fName = foundProd.name;
         fUnit = foundProd.shopUnit || 'Packung';
-        fImg = foundProd.imageUrl || '';
       }
     } else if (fav && typeof fav === 'object') {
       fName = fav.name || '';
       fUnit = fav.shopUnit || 'Packung';
-      fImg = fav.imageUrl || '';
     }
 
     if (fName) {
-      addItem({ name: fName, shopUnit: fUnit, imageUrl: fImg }, 1, fUnit);
+      addItem({ name: fName, shopUnit: fUnit }, 1, fUnit);
     }
   });
 
@@ -1308,7 +1304,7 @@ function updateSearchDropdown() {
   }
 
   dd.innerHTML = htmlContent;
-  dd.classList.add('hidden');
+  dd.classList.remove('hidden');
 }
 
 function renderDropdownItem(p, marketKey) {
@@ -1316,12 +1312,12 @@ function renderDropdownItem(p, marketKey) {
   const aisles = getActiveAisles();
   const aDef = aisles.find(a => parseInt(a.number, 10) === aNum), pPrice = getBaseUnitPrice(p.name, p.defaultPrice || 0), pDep = getBaseUnitDeposit(p.name, p.depositAmount || 0);
   const defaultShopUnit = p.shopUnit || 'Packung';
-  const pImg = getProductImageUrl(p.name) || p.imageUrl;
+  const imgUrl = getItemImageForName(p.name);
   
   return `
     <div class="p-2.5 hover:bg-stone-50 dark:hover:bg-stone-800/60 flex items-center justify-between gap-2 border-b border-stone-100 dark:border-stone-800/80 last:border-0 text-xs">
       <div class="flex items-center gap-2.5 min-w-0 flex-1">
-        ${pImg ? `<img src="${pImg}" class="w-8 h-8 object-cover rounded-xl shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs" />` : '<div class="w-8 h-8 rounded-xl bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-xs shrink-0 border border-stone-200 dark:border-stone-700">🛒</div>'}
+        ${imgUrl ? `<img src="${imgUrl}" class="w-8 h-8 object-cover rounded-xl shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" /><div class="w-8 h-8 rounded-xl bg-stone-100 dark:bg-stone-800 items-center justify-center text-xs shrink-0 border border-stone-200 dark:border-stone-700" style="display:none;">🛒</div>` : `<div class="w-8 h-8 rounded-xl bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-xs shrink-0 border border-stone-200 dark:border-stone-700">🛒</div>`}
         <div class="min-w-0 flex-1 pr-1">
           <span class="font-bold text-stone-900 dark:text-stone-100 leading-snug break-words block">${p.name}</span>
           <span class="text-[10px] text-stone-500 block truncate">${aDef ? aDef.name : `Gang ${aNum}`} • ${pPrice.toFixed(2)}€</span>
@@ -1332,7 +1328,7 @@ function renderDropdownItem(p, marketKey) {
           ${COMMON_UNITS.map(u => `<option value="${u}" ${u===defaultShopUnit?'selected':''}>${u}</option>`).join('')}
         </select>
         <button onclick="event.stopPropagation(); toggleFavorite('${p.name.replace(/'/g, "\\'")}');" class="p-1 text-sm ${isFav?'text-amber-400 font-black':'text-stone-300 dark:text-stone-600'}">${isFav?'★':'☆'}</button>
-        <button onclick="event.stopPropagation(); const cu=document.getElementById('vpe-in-${p.id}').value; persistProduct({ name: '${p.name.replace(/'/g, "\\'")}', shopUnit: cu, aisleNumber: ${aNum}, imageUrl: '${pImg}' }); addItem({ name: '${p.name.replace(/'/g, "\\'")}', shopUnit: cu, defaultPrice: ${pPrice}, depositAmount: ${pDep}, aisleNumber: ${aNum}, imageUrl: '${pImg}' }, 1, cu); render();" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-2.5 py-1.5 rounded-xl shadow-xs">+ Liste</button>
+        <button onclick="event.stopPropagation(); const cu=document.getElementById('vpe-in-${p.id}').value; persistProduct({ name: '${p.name.replace(/'/g, "\\'")}', shopUnit: cu, aisleNumber: ${aNum} }); addItem({ name: '${p.name.replace(/'/g, "\\'")}', shopUnit: cu, defaultPrice: ${pPrice}, depositAmount: ${pDep}, aisleNumber: ${aNum} }, 1, cu); render();" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-2.5 py-1.5 rounded-xl shadow-xs">+ Liste</button>
       </div>
     </div>
   `;
@@ -1841,11 +1837,11 @@ function render() {
                 <div class="divide-y divide-stone-100 dark:divide-stone-800">
                   ${aItems.map(item => {
                     const inf = calculateItemPriceInfo(item), isFav = isFavoriteItem(item.name) || isFavoriteItem(item.id);
-                    const itemImg = item.imageUrl || getProductImageUrl(item.name);
+                    const itemImgUrl = getItemImageForName(item.name);
                     return `
                       <div class="${itemBoxPad} flex items-center justify-between gap-3 hover:bg-stone-50/50 dark:hover:bg-stone-800/35 transition-colors ${itemBg}" onclick="toggleItemChecked('${item.id}')" title="Antippen zum Abhaken">
                         <div class="flex items-center gap-3.5 flex-1 min-w-0">
-${itemImg && itemImg.trim() !== '' ? `<img src="${itemImg}" class="w-10 h-10 object-cover rounded-2xl shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs" onerror="this.style.display='none'" />` : '<div class="w-10 h-10 rounded-2xl bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-sm shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs">🛒</div>'}
+                          ${itemImgUrl ? `<img src="${itemImgUrl}" class="w-10 h-10 object-cover rounded-2xl shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" /><div class="w-10 h-10 rounded-2xl bg-stone-100 dark:bg-stone-800 items-center justify-center text-sm shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs" style="display:none;">🛒</div>` : `<div class="w-10 h-10 rounded-2xl bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-sm shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs">🛒</div>`}
                           <div class="min-w-0 flex-1 py-0.5">
                             <div class="flex items-center gap-2.5 flex-wrap">
                               <button onclick="event.stopPropagation(); toggleFavorite('${item.name.replace(/'/g, "\\'")}');" class="text-base ${isFav ? 'text-amber-400 font-black' : 'text-stone-300 dark:text-stone-600 hover:text-amber-400'} transition-colors" title="${isFav ? 'Aus Favoriten entfernen' : 'Als Favorit speichern'}">${isFav ? '★' : '☆'}</button>
@@ -2079,11 +2075,11 @@ ${itemImg && itemImg.trim() !== '' ? `<img src="${itemImg}" class="w-10 h-10 obj
               const safeFavName = fav.name.replace(/'/g, "\\'");
               const currentShopUnit = fav.shopUnit || 'Packung';
               const usageCount = usageCounts[(fav.name || '').toLowerCase().trim()] || 0;
-              const fImg = fav.imageUrl || getProductImageUrl(fav.name);
+              const imgUrl = getItemImageForName(fav.name);
               return `
                 <div class="bg-white dark:bg-[#1a1a1a] border border-stone-200 dark:border-stone-800 rounded-3xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-xs">
                   <div class="flex items-center gap-2.5 min-w-0 flex-1">
-                    ${fImg ? `<img src="${fImg}" class="w-9 h-9 object-cover rounded-xl shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs" />` : '<div class="w-9 h-9 rounded-xl bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-xs shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs">🛒</div>'}
+                    ${imgUrl ? `<img src="${imgUrl}" class="w-9 h-9 object-cover rounded-xl shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" /><div class="w-9 h-9 rounded-xl bg-stone-100 dark:bg-stone-800 items-center justify-center text-xs shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs" style="display:none;">🛒</div>` : `<div class="w-9 h-9 rounded-xl bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-xs shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs">🛒</div>`}
                     <div class="min-w-0 flex-1 space-y-1">
                       <div class="flex items-center gap-1.5">
                         <input type="text" value="${fav.name}" onchange="updateFavoriteName('${safeFavName}', this.value)" class="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 rounded-xl px-2.5 py-1 text-xs font-extrabold shadow-xs focus:outline-none focus:border-red-600" title="Tippen zum Umbenennen" />
@@ -2097,7 +2093,7 @@ ${itemImg && itemImg.trim() !== '' ? `<img src="${itemImg}" class="w-10 h-10 obj
                       ${COMMON_UNITS.map(u => `<option value="${u}" ${u===currentShopUnit?'selected':''}>${u}</option>`).join('')}
                     </select>
                     <button onclick="toggleFavorite('${safeFavName}');" class="p-1 text-sm text-amber-500 font-black">★</button>
-                    <button onclick="addItem({ name: '${safeFavName}', shopUnit: '${currentShopUnit}', defaultPrice: ${fPrice}, depositAmount: ${fDep}, aisleNumber: ${aNum}, imageUrl: '${fImg}' }, 1, '${currentShopUnit}'); render();" class="bg-red-50 hover:bg-red-600 hover:text-white text-red-700 dark:text-red-400 text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs transition-colors border border-red-200">+ Liste</button>
+                    <button onclick="addItem({ name: '${safeFavName}', shopUnit: '${currentShopUnit}', defaultPrice: ${fPrice}, depositAmount: ${fDep}, aisleNumber: ${aNum} }, 1, '${currentShopUnit}'); render();" class="bg-red-50 hover:bg-red-600 hover:text-white text-red-700 dark:text-red-400 text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs transition-colors border border-red-200">+ Liste</button>
                   </div>
                 </div>
               `;
@@ -2267,12 +2263,11 @@ ${itemImg && itemImg.trim() !== '' ? `<img src="${itemImg}" class="w-10 h-10 obj
             <div class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
               ${state.voiceDisambiguationMatches.map(m => `
                 <button onclick="
-                  addItem({ name: '${m.name.replace(/'/g, "\\'")}', shopUnit: '${m.shopUnit||'Packung'}', defaultPrice: ${m.defaultPrice||0}, depositAmount: ${m.depositAmount||0}, aisleNumber: ${m.aisleNumber||6}, imageUrl: '${m.imageUrl||''}' }, 1, '${m.shopUnit||'Packung'}');
+                  addItem({ name: '${m.name.replace(/'/g, "\\'")}', shopUnit: '${m.shopUnit||'Packung'}', defaultPrice: ${m.defaultPrice||0}, depositAmount: ${m.depositAmount||0}, aisleNumber: ${m.aisleNumber||6} }, 1, '${m.shopUnit||'Packung'}');
                   state.showVoiceDisambiguationModal = false;
                   render();
                 " class="w-full text-left p-3 rounded-2xl bg-stone-50 dark:bg-stone-800 hover:bg-red-500/10 border border-stone-200 dark:border-stone-700 flex justify-between items-center transition-all shadow-xs">
                   <div class="flex items-center gap-2.5">
-                    ${m.imageUrl ? `<img src="${m.imageUrl}" class="w-8 h-8 object-cover rounded-xl shrink-0" />` : ''}
                     <div>
                       <span class="font-extrabold text-xs text-stone-900 dark:text-stone-100 block">${m.name}</span>
                       <span class="text-[10px] text-stone-500">Gang ${m.aisleNumber || 6} • ${m.shopUnit || 'Packung'}</span>
@@ -2305,7 +2300,6 @@ ${itemImg && itemImg.trim() !== '' ? `<img src="${itemImg}" class="w-10 h-10 obj
             </div>
             
             <div class="bg-stone-50 dark:bg-stone-800/60 p-3 rounded-2xl border border-stone-200 dark:border-stone-700 text-xs flex items-center gap-3">
-              ${scannedInfo.imageUrl ? `<img src="${scannedInfo.imageUrl}" class="w-12 h-12 object-cover rounded-xl border border-stone-200 shrink-0" />` : ''}
               <div>
                 <span class="text-[10px] font-bold text-stone-400 uppercase block">Offizieller Name laut Datenbank:</span>
                 <p class="font-black text-stone-900 dark:text-stone-100">${scannedInfo.rawName || 'Unbekannt'}</p>
@@ -2318,7 +2312,6 @@ ${itemImg && itemImg.trim() !== '' ? `<img src="${itemImg}" class="w-10 h-10 obj
               ${state.barcodeMatchCandidates.map(cand => `
                 <button onclick="assignBarcodeToExistingProduct('${cand.name.replace(/'/g, "\\'")}')" class="w-full text-left p-3 rounded-2xl bg-stone-50 dark:bg-stone-800 hover:bg-red-500/10 border border-stone-200 dark:border-stone-700 flex justify-between items-center transition-all shadow-xs">
                   <div class="flex items-center gap-2.5">
-                    ${cand.imageUrl ? `<img src="${cand.imageUrl}" class="w-8 h-8 object-cover rounded-xl shrink-0" />` : ''}
                     <div>
                       <span class="font-extrabold text-xs text-stone-900 dark:text-stone-100 block">✨ ${cand.name}</span>
                       <span class="text-[10px] text-stone-500">Gang ${cand.aisleNumber || 6} • ${cand.shopUnit || 'Packung'}</span>
@@ -2354,12 +2347,6 @@ ${itemImg && itemImg.trim() !== '' ? `<img src="${itemImg}" class="w-10 h-10 obj
               </div>
               <button onclick="state.showScanIntentModal=false; render();" class="text-stone-400 hover:text-stone-700 font-bold">✕</button>
             </div>
-            
-            ${scannedInfo.imageUrl ? `
-              <div class="flex justify-center">
-                <img src="${scannedInfo.imageUrl}" class="w-20 h-20 object-cover rounded-2xl border-2 border-red-500 shadow-md" />
-              </div>
-            ` : ''}
 
             <div class="space-y-1">
               <label class="text-[10px] font-bold text-stone-400 uppercase block">Produktname anpassen:</label>
@@ -2517,11 +2504,9 @@ ${itemImg && itemImg.trim() !== '' ? `<img src="${itemImg}" class="w-10 h-10 obj
                     ${group.map(item => {
                       const itemPrice = getBaseUnitPrice(item.name, item.defaultPrice || 0);
                       const itemAisle = getProductAisleForMarket(item.name, marketKey);
-                      const itemImg = item.imageUrl || getProductImageUrl(item.name);
                       return `
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white dark:bg-stone-900 p-2.5 rounded-2xl border border-stone-200 dark:border-stone-700">
                           <div class="flex items-center gap-2.5 min-w-0 flex-1">
-                            ${itemImg ? `<img src="${itemImg}" class="w-8 h-8 object-cover rounded-xl shrink-0" />` : ''}
                             <div class="min-w-0 flex-1 pr-1">
                               <span class="font-bold text-stone-900 dark:text-stone-100 block break-words text-xs leading-snug">${item.name}</span>
                               <span class="text-[10px] text-stone-500 block truncate font-medium">Einheit: <b>${item.shopUnit || 'Packung'}</b> • Preis: <b>${itemPrice.toFixed(2)} €</b> • Gang ${itemAisle}</span>
@@ -2827,7 +2812,6 @@ ${itemImg && itemImg.trim() !== '' ? `<img src="${itemImg}" class="w-10 h-10 obj
       const promoPercVal = (item.promoPercent !== undefined && item.promoPercent !== null) ? item.promoPercent : '';
       const isFavEdit = isFavoriteItem(item.name) || isFavoriteItem(item.id);
       const itemAisleVal = getProductAisleForMarket(item.name, marketKey);
-      const editImg = item.imageUrl || getProductImageUrl(item.name);
       html += `
         <div class="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
           <div class="bg-white dark:bg-[#1a1a1a] border border-stone-200 dark:border-stone-800 rounded-3xl max-w-md w-full p-4 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto custom-scrollbar text-stone-900 dark:text-stone-100">
@@ -2838,7 +2822,6 @@ ${itemImg && itemImg.trim() !== '' ? `<img src="${itemImg}" class="w-10 h-10 obj
               </div>
               <button onclick="state.editingModalItem=null; render();">✕</button>
             </div>
-            ${editImg ? `<div class="flex justify-center"><img src="${editImg}" class="w-16 h-16 object-cover rounded-2xl border border-stone-200 shadow-sm" /></div>` : ''}
             <div><label class="text-[11px] font-bold text-stone-700 dark:text-stone-300 block mb-1">Name</label><input type="text" id="edit-item-name" value="${item.name}" class="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 rounded-xl px-3 py-2 text-xs font-bold shadow-xs" /></div>
             <div>
               <label class="text-[11px] font-bold text-stone-700 dark:text-stone-300 block mb-1">Einheit</label>
@@ -2915,11 +2898,9 @@ function getFilteredDbHtml(marketKey) {
   }
   return filteredDb.map(p => {
     const aNum = getProductAisleForMarket(p.name, marketKey), curP = getBaseUnitPrice(p.name, p.defaultPrice || 0);
-    const pImg = p.imageUrl || getProductImageUrl(p.name);
     return `
       <div class="pt-2 pb-1 flex justify-between items-center gap-2 text-xs hover:bg-stone-50 dark:hover:bg-stone-800/60 px-2 rounded-xl">
         <div class="flex items-center gap-2.5 min-w-0 flex-1">
-          ${pImg ? `<img src="${pImg}" class="w-8 h-8 object-cover rounded-xl shrink-0" />` : ''}
           <div class="min-w-0 flex-1">
             <span class="font-bold text-stone-900 dark:text-stone-100 leading-snug break-words block">${p.name}</span>
             <span class="text-stone-500 text-[10px] block truncate font-medium">Gang ${aNum} • Einheit: <b>${p.shopUnit||'Packung'}</b> • ${curP.toFixed(2)}€</span>
@@ -3071,7 +3052,7 @@ function saveEditItemModal(id) {
     state.savedBarcodes[activeBarcode] = newName;
   }
 
-  persistProduct({ name: newName, shopUnit: item.packageUnit, defaultPrice: item.estimatedPrice, depositAmount: item.depositAmount, aisleNumber: item.aisleNumber, imageUrl: item.imageUrl }, oldName);
+  persistProduct({ name: newName, shopUnit: item.packageUnit, defaultPrice: item.estimatedPrice, depositAmount: item.depositAmount, aisleNumber: item.aisleNumber }, oldName);
 
   state.editingModalItem = null;
   soundAdd();
@@ -3268,16 +3249,15 @@ async function fetchProductByBarcode(barcode) {
   try {
     if (state.savedBarcodes && state.savedBarcodes[barcode]) {
       const rememberedName = state.savedBarcodes[barcode];
-      const rememberedImg = state.savedImages ? state.savedImages[rememberedName] : '';
       showToast(`✨ Bekannter Barcode! Erkannt als: "${rememberedName}"`);
-      handleScannedProductNameResolved(rememberedName, barcode, rememberedImg);
+      handleScannedProductNameResolved(rememberedName, barcode);
       return;
     }
 
     const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
     
     if (!response.ok) {
-      promptUnknownBarcode(barcode, "Neues Produkt", "");
+      promptUnknownBarcode(barcode, "Neues Produkt");
       return;
     }
 
@@ -3285,7 +3265,6 @@ async function fetchProductByBarcode(barcode) {
 
     if (data.status === 1 && data.product) {
       const rawApiName = (data.product.product_name || data.product.brands || `Produkt ${barcode}`).trim();
-      const frontImgUrl = data.product.image_front_small_url || data.product.image_small_url || data.product.image_url || '';
       
       const catalog = getCatalog();
       const lowerApiName = rawApiName.toLowerCase();
@@ -3298,49 +3277,47 @@ async function fetchProductByBarcode(barcode) {
       });
 
       if (matchingCandidates.length > 0) {
-        state.scannedBarcodeData = { barcode, rawName: rawApiName, imageUrl: frontImgUrl };
+        state.scannedBarcodeData = { barcode, rawName: rawApiName };
         state.barcodeMatchCandidates = matchingCandidates.slice(0, 5);
         state.showBarcodeMatchModal = true;
         soundAdd();
         render();
       } else {
-        handleScannedProductNameResolved(rawApiName, barcode, frontImgUrl);
+        handleScannedProductNameResolved(rawApiName, barcode);
       }
     } else {
-      promptUnknownBarcode(barcode, `Produkt ${barcode}`, '');
+      promptUnknownBarcode(barcode, `Produkt ${barcode}`);
     }
   } catch (err) {
-    promptUnknownBarcode(barcode, `Produkt ${barcode}`, '');
+    promptUnknownBarcode(barcode, `Produkt ${barcode}`);
   }
 }
 
-function promptUnknownBarcode(barcode, defaultName, imageUrl) {
+function promptUnknownBarcode(barcode, defaultName) {
   const customName = prompt(`Barcode ${barcode} nicht in weltweiter Datenbank gefunden. Wie heißt das Produkt?`, defaultName);
   if (customName && customName.trim()) {
-    handleScannedProductNameResolved(customName.trim(), barcode, imageUrl);
+    handleScannedProductNameResolved(customName.trim(), barcode);
   }
 }
 
 function assignBarcodeToExistingProduct(chosenName) {
   const barcode = state.scannedBarcodeData ? state.scannedBarcodeData.barcode : null;
-  const scannedImg = state.scannedBarcodeData ? state.scannedBarcodeData.imageUrl : '';
   state.showBarcodeMatchModal = false;
-  handleScannedProductNameResolved(chosenName, barcode, scannedImg);
+  handleScannedProductNameResolved(chosenName, barcode);
 }
 
 function assignBarcodeAsNewProduct() {
   const raw = state.scannedBarcodeData ? state.scannedBarcodeData.rawName : 'Neues Produkt';
-  const scannedImg = state.scannedBarcodeData ? state.scannedBarcodeData.imageUrl : '';
   const customName = prompt("Wie soll dieser Artikel in deiner Datenbank heißen?", raw);
   state.showBarcodeMatchModal = false;
   if (customName && customName.trim()) {
     const barcode = state.scannedBarcodeData ? state.scannedBarcodeData.barcode : null;
-    handleScannedProductNameResolved(customName.trim(), barcode, scannedImg);
+    handleScannedProductNameResolved(customName.trim(), barcode);
   }
 }
 
-function handleScannedProductNameResolved(finalName, barcode, imageUrl) {
-  state.scannedBarcodeData = { barcode, finalName, imageUrl };
+function handleScannedProductNameResolved(finalName, barcode) {
+  state.scannedBarcodeData = { barcode, finalName };
   state.showScanIntentModal = true;
   soundAdd();
   render();
@@ -3354,7 +3331,7 @@ function executeScanIntent(intent) {
     return;
   }
 
-  const { barcode, imageUrl } = scanned;
+  const { barcode } = scanned;
 
   const nameInput = document.getElementById('scan-modal-name-input');
   const priceInput = document.getElementById('scan-modal-price-input');
@@ -3374,11 +3351,6 @@ function executeScanIntent(intent) {
     state.savedBarcodes[barcode] = finalName;
   }
 
-  if (imageUrl) {
-    if (!state.savedImages) state.savedImages = {};
-    state.savedImages[finalName] = imageUrl;
-  }
-
   if (enteredPrice !== null && !isNaN(enteredPrice)) {
     state.savedPrices[finalName] = enteredPrice;
   }
@@ -3389,16 +3361,14 @@ function executeScanIntent(intent) {
   persistProduct({ 
     name: finalName, 
     defaultPrice: enteredPrice !== null && !isNaN(enteredPrice) ? enteredPrice : undefined,
-    depositAmount: !isNaN(enteredDeposit) ? enteredDeposit : undefined,
-    imageUrl: imageUrl || ''
+    depositAmount: !isNaN(enteredDeposit) ? enteredDeposit : undefined
   });
 
   if (intent === 'cart') {
     addItem({ 
       name: finalName, 
       defaultPrice: enteredPrice !== null && !isNaN(enteredPrice) ? enteredPrice : undefined,
-      depositAmount: !isNaN(enteredDeposit) ? enteredDeposit : undefined,
-      imageUrl: imageUrl || ''
+      depositAmount: !isNaN(enteredDeposit) ? enteredDeposit : undefined
     }, 1);
     showToast(`🛒 "${finalName}" (${enteredPrice !== null ? enteredPrice.toFixed(2) + ' €' : ''}) zur Einkaufsliste hinzugefügt!`);
   } else {
