@@ -1,4 +1,4 @@
-// app.js - Dropdown-Breite korrigiert & Galerie-Upload aktiviert
+// app.js - Dropdown-Breite korrigiert, Galerie-Upload aktiviert & Backup-Schutz integriert
 
 function getGroqApiKey() {
   let key = localStorage.getItem('dino_groq_api_key_v1');
@@ -789,8 +789,11 @@ function importAppDataText() {
       state.customMarketAisles = parsed.customMarketAisles || {};
       state.marketOverrides = parsed.marketOverrides || {};
       state.purchaseHistory = parsed.purchaseHistory || [];
-      state.savedBarcodes = parsed.savedBarcodes || {};
-      state.savedImages = parsed.savedImages || {};
+      
+      // SICHERUNG: Bestehende Bilder und Barcodes beim Import nicht überschreiben, sondern mergen!
+      state.savedBarcodes = Object.assign({}, parsed.savedBarcodes || {}, state.savedBarcodes || {});
+      state.savedImages = Object.assign({}, parsed.savedImages || {}, state.savedImages || {});
+
       saveState();
       soundComplete();
       showToast("Backup erfolgreich eingespielt! 🎉");
