@@ -1,4 +1,4 @@
-// app.js - Komplettversion (Robuste Bild-Mitnahme für eigene Begriffe beim Umbenennen)
+// app.js - Komplettversion (Echte Bild-Mitnahme beim Umbenennen von Artikeln)
 
 function getGroqApiKey() {
   let key = localStorage.getItem('dino_groq_api_key_v1');
@@ -39,12 +39,10 @@ function getItemImageForName(itemName) {
   let foundUrl = '';
   const searchName = itemName.toLowerCase().trim();
   
-  // 1. Direkter Treffer im Bild-Speicher (egal ob Barcode oder direkt der Name)
   if (state.savedImages) {
     if (state.savedImages[searchName]) {
       return state.savedImages[searchName];
     }
-    // Fallback: Suche case-insensitive im savedImages Objekt
     for (let key of Object.keys(state.savedImages)) {
       if (key.toLowerCase().trim() === searchName) {
         return state.savedImages[key];
@@ -52,7 +50,6 @@ function getItemImageForName(itemName) {
     }
   }
 
-  // 2. Über verknüpfte Barcodes suchen
   if (state.savedBarcodes) {
     Object.keys(state.savedBarcodes).forEach(bc => {
       if (state.savedBarcodes[bc] && state.savedBarcodes[bc].toLowerCase().trim() === searchName) {
@@ -677,18 +674,17 @@ function persistProduct(p, oldName = null) {
     if (state.savedPrices[oldName]) { state.savedPrices[newName] = state.savedPrices[oldName]; delete state.savedPrices[oldName]; }
     if (state.savedDeposits[oldName]) { state.savedDeposits[newName] = state.savedDeposits[oldName]; delete state.savedDeposits[oldName]; }
 
-    // WICHTIG: Bildverknüpfung beim Umbenennen (egal ob alt oder neu) absolut sicher mitnehmen!
+    // BILD AKTIV MITNEHMEN BEIM UMBENENNEN (DIREKT SPIEGELN)
     if (state.savedImages) {
       let foundImgKey = null;
       for (let key of Object.keys(state.savedImages)) {
-        if (key.toLowerCase().trim() === oldLower) {
+        if (key.toLowerCase().trim() === oldLower || key.toLowerCase().trim() === newLower) {
           foundImgKey = key;
           break;
         }
       }
-      if (foundImgKey) {
+      if (foundImgKey && state.savedImages[foundImgKey]) {
         state.savedImages[newLower] = state.savedImages[foundImgKey];
-        delete state.savedImages[foundImgKey];
       }
     }
 
@@ -3071,6 +3067,24 @@ function saveEditItemModal(id) {
   const newName = nameInp ? nameInp.value.trim() : item.name;
   if (!newName) return;
 
+  // BILD BEIM BEARBEITEN/UMBENENNEN DIREKT ÜBERTRAGEN
+  if (state.savedImages) {
+    const oldLower = oldName.toLowerCase().trim();
+    const newLower = newName.toLowerCase().trim();
+    let existingUrl = state.savedImages[oldLower];
+    if (!existingUrl) {
+      for (let k of Object.keys(state.savedImages)) {
+        if (k.toLowerCase().trim() === oldLower) {
+          existingUrl = state.savedImages[k];
+          break;
+        }
+      }
+    }
+    if (existingUrl) {
+      state.savedImages[newLower] = existingUrl;
+    }
+  }
+
   item.name = newName;
   if (unitSel) item.packageUnit = unitSel.value;
   if (aisleSel) item.aisleNumber = parseInt(aisleSel.value, 10) || item.aisleNumber;
@@ -3175,7 +3189,6 @@ function updateFavoriteName(oldName, newName) {
   const lowerOld = oldName.toLowerCase().trim();
   const lowerNew = trimmed.toLowerCase().trim();
 
-  // Bild beim Umbenennen eines Favoriten direkt mitübertragen
   if (state.savedImages) {
     let foundKey = null;
     for (let k of Object.keys(state.savedImages)) {
