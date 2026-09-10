@@ -1,4 +1,4 @@
-// app.js - Mit sauberem Such-Dropdown (ohne unschöne Zeilenumbrüche)
+// app.js - Dropdown-Breite korrigiert (keine vertikalen Buchstaben mehr)
 
 function getGroqApiKey() {
   let key = localStorage.getItem('dino_groq_api_key_v1');
@@ -1830,7 +1830,8 @@ function render() {
               </button>
               <button onclick="const n=document.getElementById('main-search-input').value.trim(); if(n){ addItem(n, 1); render(); }" class="bg-red-600 hover:bg-red-700 text-white text-xs font-extrabold px-3.5 py-2.5 rounded-2xl shrink-0 shadow-xs">+ Hinzufügen</button>
             </div>
-            <div id="search-dropdown-container" class="hidden absolute left-3 right-3 top-full mt-2 bg-white dark:bg-[#1a1a1a] border border-stone-200 dark:border-stone-800 rounded-3xl shadow-xl overflow-hidden z-40 max-h-60 overflow-y-auto custom-scrollbar"></div>
+            <!-- WICHTIG: min-w-full sorgt dafür, dass das Dropdown breit genug ist und Text nicht untereinander bricht -->
+            <div id="search-dropdown-container" class="hidden absolute left-0 right-0 top-full mt-2 min-w-full bg-white dark:bg-[#1a1a1a] border border-stone-200 dark:border-stone-800 rounded-3xl shadow-xl overflow-hidden z-40 max-h-60 overflow-y-auto custom-scrollbar"></div>
           </div>
 
           <div class="bg-white dark:bg-[#1a1a1a] border border-stone-200 dark:border-stone-800 rounded-3xl p-3.5 shadow-xs space-y-2.5">
