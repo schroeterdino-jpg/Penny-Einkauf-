@@ -1,4 +1,4 @@
-// app.js - Mit echtem Foto-Upload & Kamera-Schnappschuss beim Barcode-Scanners (Fix für lesbare Schrift im Dark Mode)
+// app.js - Mit echtem Foto-Upload & Kamera-Schnappschuss beim Barcode-Scanners
 
 function getGroqApiKey() {
   let key = localStorage.getItem('dino_groq_api_key_v1');
@@ -1357,24 +1357,20 @@ function renderDropdownItem(p, marketKey) {
   const imgUrl = getItemImageForName(p.name);
   
   return `
-    <div class="p-3 hover:bg-stone-50 dark:hover:bg-stone-800/60 flex flex-col gap-2.5 border-b border-stone-100 dark:border-stone-800/80 last:border-0 text-xs">
-      ${imgUrl ? `
-        <div class="w-full flex justify-center bg-stone-100 dark:bg-stone-800 rounded-2xl p-2 border border-stone-200 dark:border-stone-700 shadow-xs">
-          <img src="${imgUrl}" class="max-h-36 w-auto object-contain rounded-xl" onerror="this.parentElement.style.display='none';" />
-        </div>
-      ` : ''}
-      <div class="flex items-center justify-between gap-3">
+    <div class="p-3 hover:bg-stone-50 dark:hover:bg-stone-800/60 flex items-center justify-between gap-3 border-b border-stone-100 dark:border-stone-800/80 last:border-0 text-xs">
+      <div class="flex items-center gap-3 min-w-0 flex-1">
+        ${imgUrl ? `<img src="${imgUrl}" class="w-12 h-12 object-cover rounded-xl shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" /><div class="w-12 h-12 rounded-xl bg-stone-100 dark:bg-stone-800 items-center justify-center text-xs shrink-0 border border-stone-200 dark:border-stone-700" style="display:none;">🛒</div>` : `<div class="w-12 h-12 rounded-xl bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-xs shrink-0 border border-stone-200 dark:border-stone-700">🛒</div>`}
         <div class="min-w-0 flex-1">
-          <span class="font-bold text-stone-900 dark:text-stone-100 leading-snug block break-words text-sm">${p.name}</span>
-          <span class="text-[11px] text-stone-500 dark:text-stone-400 block truncate mt-0.5">${aDef ? aDef.name : `Gang ${aNum}`} • ${pPrice.toFixed(2)}€</span>
+          <span class="font-bold text-stone-900 dark:text-stone-100 leading-snug block break-words">${p.name}</span>
+          <span class="text-[10px] text-stone-500 block truncate">${aDef ? aDef.name : `Gang ${aNum}`} • ${pPrice.toFixed(2)}€</span>
         </div>
-        <div class="flex items-center gap-1.5 shrink-0" onclick="event.stopPropagation();">
-          <select id="vpe-in-${p.id}" class="bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 rounded-lg px-2 py-1.5 text-[11px] font-semibold">
-            ${COMMON_UNITS.map(u => `<option value="${u}" ${u===defaultShopUnit?'selected':''}>${u}</option>`).join('')}
-          </select>
-          <button onclick="event.stopPropagation(); toggleFavorite('${p.name.replace(/'/g, "\\'")}');" class="p-1.5 text-base ${isFav?'text-amber-400 font-black':'text-stone-300 dark:text-stone-600'}">${isFav?'★':'☆'}</button>
-          <button onclick="event.stopPropagation(); const cu=document.getElementById('vpe-in-${p.id}').value; persistProduct({ name: '${p.name.replace(/'/g, "\\'")}', shopUnit: cu, aisleNumber: ${aNum} }); addItem({ name: '${p.name.replace(/'/g, "\\'")}', shopUnit: cu, defaultPrice: ${pPrice}, depositAmount: ${pDep}, aisleNumber: ${aNum} }, 1, cu); render();" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-2 rounded-xl shadow-xs">+ Liste</button>
-        </div>
+      </div>
+      <div class="flex items-center gap-1.5 shrink-0" onclick="event.stopPropagation();">
+        <select id="vpe-in-${p.id}" class="bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 rounded-lg px-1.5 py-1 text-[10px] font-semibold">
+          ${COMMON_UNITS.map(u => `<option value="${u}" ${u===defaultShopUnit?'selected':''}>${u}</option>`).join('')}
+        </select>
+        <button onclick="event.stopPropagation(); toggleFavorite('${p.name.replace(/'/g, "\\'")}');" class="p-1 text-sm ${isFav?'text-amber-400 font-black':'text-stone-300 dark:text-stone-600'}">${isFav?'★':'☆'}</button>
+        <button onclick="event.stopPropagation(); const cu=document.getElementById('vpe-in-${p.id}').value; persistProduct({ name: '${p.name.replace(/'/g, "\\'")}', shopUnit: cu, aisleNumber: ${aNum} }); addItem({ name: '${p.name.replace(/'/g, "\\'")}', shopUnit: cu, defaultPrice: ${pPrice}, depositAmount: ${pDep}, aisleNumber: ${aNum} }, 1, cu); render();" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-2.5 py-1.5 rounded-xl shadow-xs">+ Liste</button>
       </div>
     </div>
   `;
@@ -1564,7 +1560,7 @@ function render() {
         if(state.activeTab === tab) {
           btn.className = 'flex flex-col items-center justify-center py-1.5 rounded-2xl transition-all text-red-600 dark:text-red-400 bg-red-500/10 font-bold relative shadow-xs';
         } else {
-          btn.className = 'flex flex-col items-center justify-center py-1.5 rounded-2xl transition-all text-stone-400 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 relative';
+          btn.className = 'flex flex-col items-center justify-center py-1.5 rounded-2xl transition-all text-stone-400 hover:text-stone-700 dark:hover:text-stone-300 relative';
         }
       }
     });
@@ -1642,9 +1638,9 @@ function render() {
               <h2 class="text-sm font-extrabold text-stone-900 dark:text-stone-100 flex items-center gap-1.5">
                 <span>🤖</span> GPT-OSS KI-Assistent & Rezept-Bot
               </h2>
-              <p class="text-[11px] text-stone-500 dark:text-stone-400 font-medium">Frage nach Rezepten oder sage direkt: „Setze Milch auf die Aldi-Liste!“</p>
+              <p class="text-[11px] text-stone-500 font-medium">Frage nach Rezepten oder sage direkt: „Setze Milch auf die Aldi-Liste!“</p>
             </div>
-            <button onclick="if(confirm('Chat-Verlauf löschen?')){ state.chatMessages=[]; saveState(); render(); }" class="text-xs font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-2.5 py-1.5 rounded-xl border border-red-200 dark:border-red-900">Verlauf leeren</button>
+            <button onclick="if(confirm('Chat-Verlauf löschen?')){ state.chatMessages=[]; saveState(); render(); }" class="text-xs font-bold text-red-600 bg-red-50 dark:bg-red-950/40 px-2.5 py-1.5 rounded-xl border border-red-200">Verlauf leeren</button>
           </div>
 
           <div class="flex gap-1.5 overflow-x-auto custom-scrollbar pb-1">
@@ -1666,7 +1662,7 @@ function render() {
             `).join('')}
             ${state.isChatLoading ? `
               <div class="flex justify-start">
-                <div class="bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 rounded-2xl rounded-bl-none p-3 text-xs font-bold border border-stone-200 dark:border-stone-700 flex items-center gap-2">
+                <div class="bg-stone-100 dark:bg-stone-800 text-stone-500 rounded-2xl rounded-bl-none p-3 text-xs font-bold border border-stone-200 dark:border-stone-700 flex items-center gap-2">
                   <span class="w-2 h-2 rounded-full bg-red-600 animate-ping"></span> GPT denkt nach...
                 </div>
               </div>
@@ -1713,7 +1709,7 @@ function render() {
               <span class="text-base w-8 h-8 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center shrink-0">🍲</span>
               <div>
                 <span class="font-bold text-xs text-stone-900 dark:text-stone-100 block">Rezepte</span>
-                <span class="text-[10px] text-stone-500 dark:text-stone-400 block">Chefkoch Suche</span>
+                <span class="text-[10px] text-stone-500 block">Chefkoch Suche</span>
               </div>
             </button>
 
@@ -1721,7 +1717,7 @@ function render() {
               <span class="text-base w-8 h-8 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">📰</span>
               <div>
                 <span class="font-bold text-xs text-stone-900 dark:text-stone-100 block">Prospekte</span>
-                <span class="text-[10px] text-stone-500 dark:text-stone-400 block">Schwarzenbek</span>
+                <span class="text-[10px] text-stone-500 block">Schwarzenbek</span>
               </div>
             </button>
 
@@ -1729,7 +1725,7 @@ function render() {
               <span class="text-base w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">📊</span>
               <div>
                 <span class="font-bold text-xs text-stone-900 dark:text-stone-100 block">Historie</span>
-                <span class="text-[10px] text-stone-500 dark:text-stone-400 block">Kassenbons</span>
+                <span class="text-[10px] text-stone-500 block">Kassenbons</span>
               </div>
             </button>
 
@@ -1737,7 +1733,7 @@ function render() {
               <span class="text-base w-8 h-8 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0">🗺️</span>
               <div>
                 <span class="font-bold text-xs text-stone-900 dark:text-stone-100 block">Gänge</span>
-                <span class="text-[10px] text-stone-500 dark:text-stone-400 block">Markt-Laufwege</span>
+                <span class="text-[10px] text-stone-500 block">Markt-Laufwege</span>
               </div>
             </button>
 
@@ -1745,7 +1741,7 @@ function render() {
               <span class="text-base w-8 h-8 rounded-xl bg-stone-500/10 text-stone-500 flex items-center justify-center shrink-0">🗄️</span>
               <div>
                 <span class="font-bold text-xs text-stone-900 dark:text-stone-100 block">Datenbank</span>
-                <span class="text-[10px] text-stone-500 dark:text-stone-400 block">Artikel verwalten, Duplikate bereinigen</span>
+                <span class="text-[10px] text-stone-500 block">Artikel verwalten, Duplikate bereinigen</span>
               </div>
             </button>
 
@@ -1754,14 +1750,14 @@ function render() {
                 <span class="text-base">💾</span>
                 <div>
                   <span class="font-bold text-xs text-emerald-800 dark:text-emerald-300 block">Backup anzeigen</span>
-                  <span class="text-[9px] text-stone-500 dark:text-stone-400 block">Sicherer Text-Export</span>
+                  <span class="text-[9px] text-stone-500 block">Sicherer Text-Export</span>
                 </div>
               </button>
               <button onclick="state.showExportModal=true; state.exportTextContent=''; render();" class="p-3 rounded-2xl bg-blue-500/10 hover:bg-blue-500/20 border border-blue-300 dark:border-blue-900/40 flex items-center gap-2 text-left shadow-xs transition-all">
                 <span class="text-base">📂</span>
                 <div>
                   <span class="font-bold text-xs text-blue-800 dark:text-blue-300 block">Backup einspielen</span>
-                  <span class="text-[9px] text-stone-500 dark:text-stone-400 block">Code einfügen</span>
+                  <span class="text-[9px] text-stone-500 block">Code einfügen</span>
                 </div>
               </button>
             </div>
@@ -1834,7 +1830,7 @@ function render() {
               </button>
               <button onclick="const n=document.getElementById('main-search-input').value.trim(); if(n){ addItem(n, 1); render(); }" class="bg-red-600 hover:bg-red-700 text-white text-xs font-extrabold px-3.5 py-2.5 rounded-2xl shrink-0 shadow-xs">+ Hinzufügen</button>
             </div>
-            <div id="search-dropdown-container" class="hidden absolute left-3 right-3 top-full mt-2 bg-white dark:bg-[#1a1a1a] border border-stone-200 dark:border-stone-800 rounded-3xl shadow-xl overflow-hidden z-40 max-h-72 overflow-y-auto custom-scrollbar"></div>
+            <div id="search-dropdown-container" class="hidden absolute left-3 right-3 top-full mt-2 bg-white dark:bg-[#1a1a1a] border border-stone-200 dark:border-stone-800 rounded-3xl shadow-xl overflow-hidden z-40 max-h-60 overflow-y-auto custom-scrollbar"></div>
           </div>
 
           <div class="bg-white dark:bg-[#1a1a1a] border border-stone-200 dark:border-stone-800 rounded-3xl p-3.5 shadow-xs space-y-2.5">
@@ -1855,7 +1851,7 @@ function render() {
             </div>
             ${curItems.length>0?`
               <div class="grid grid-cols-3 gap-1.5 pt-2 border-t border-stone-100 dark:border-stone-800 text-center">
-                <div class="bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl py-1.5 shadow-xs"><span class="text-[9px] text-stone-500 dark:text-stone-400 uppercase font-extrabold block">Warenwert</span><span class="text-xs font-bold text-stone-900 dark:text-stone-100">${subtotal.toFixed(2)} €</span></div>
+                <div class="bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl py-1.5 shadow-xs"><span class="text-[9px] text-stone-500 uppercase font-extrabold block">Warenwert</span><span class="text-xs font-bold text-stone-900 dark:text-stone-200">${subtotal.toFixed(2)} €</span></div>
                 <div class="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 rounded-2xl py-1.5 shadow-xs"><span class="text-[9px] text-emerald-700 dark:text-emerald-400 uppercase font-extrabold block">Pfand (${depCount} Fl.)</span><span class="text-xs font-bold text-emerald-800 dark:text-emerald-300">+${depTotal.toFixed(2)} €</span></div>
                 <div class="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/40 rounded-2xl py-1.5 shadow-xs"><span class="text-[9px] text-red-600 dark:text-red-400 uppercase font-extrabold block">Gesamt</span><span class="text-xs font-black text-red-600 dark:text-red-400">${(subtotal+depTotal).toFixed(2)} €</span></div>
               </div>
@@ -1863,7 +1859,7 @@ function render() {
           </div>
 
           ${curItems.length === 0 ? `
-            <div class="bg-white dark:bg-[#1a1a1a] border border-stone-200 dark:border-stone-800 rounded-3xl p-8 text-center text-stone-500 dark:text-stone-400 space-y-1.5 shadow-xs">
+            <div class="bg-white dark:bg-[#1a1a1a] border border-stone-200 dark:border-stone-800 rounded-3xl p-8 text-center text-stone-500 space-y-1.5 shadow-xs">
               <span class="text-2xl">🛒</span>
               <p class="text-xs font-bold">Deine Einkaufsliste ist leer.</p>
             </div>
@@ -1905,7 +1901,7 @@ function render() {
                         <div class="flex items-center gap-2.5 shrink-0" onclick="event.stopPropagation();">
                           <div class="flex items-center bg-stone-100 dark:bg-stone-800 rounded-2xl p-1 border border-stone-200 dark:border-stone-700 shadow-xs">
                             <button onclick="updateItemQty('${item.id}', -1)" class="w-9 h-9 bg-white dark:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl font-bold text-base shadow-xs flex items-center justify-center">-</button>
-                            <span class="px-3.5 text-base font-extrabold min-w-[2rem] text-center text-stone-900 dark:text-stone-100">${item.quantity}</span>
+                            <span class="px-3.5 text-base font-extrabold min-w-[2rem] text-center">${item.quantity}</span>
                             <button onclick="updateItemQty('${item.id}', 1)" class="w-9 h-9 bg-white dark:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl font-bold text-base shadow-xs flex items-center justify-center">+</button>
                           </div>
                           <button onclick="removeItem('${item.id}')" class="w-9 h-9 bg-red-50 dark:bg-red-950/40 text-red-600 rounded-xl flex items-center justify-center text-sm border border-red-200 shadow-xs">🗑</button>
@@ -1922,7 +1918,7 @@ function render() {
             <div class="bg-white dark:bg-[#1a1a1a] border border-stone-200 dark:border-stone-800 rounded-3xl overflow-hidden shadow-xs mt-3">
               <div class="bg-stone-50 dark:bg-stone-800/50 px-3.5 py-3 flex items-center justify-between text-xs font-extrabold text-stone-700 dark:text-stone-300 border-b border-stone-100 dark:border-stone-800">
                 <button onclick="state.showCompleted=!state.showCompleted; render();" class="flex items-center gap-1.5 text-sm"><span>${state.showCompleted?'▼':'▶'}</span><span>Erledigt (${compItems.length})</span></button>
-                <button onclick="state.items=state.items.filter(i=>!((i.listId||'list-penny')===state.activeListId && i.isChecked)); saveState(); render();" class="text-xs text-red-600 dark:text-red-400 font-extrabold">Leeren 🗑</button>
+                <button onclick="state.items=state.items.filter(i=>!((i.listId||'list-penny')===state.activeListId && i.isChecked)); saveState(); render();" class="text-xs text-red-600 font-extrabold">Leeren 🗑</button>
               </div>
               ${state.showCompleted ? `<div class="divide-y divide-stone-100 dark:divide-stone-800">${compItems.map(item => `
                 <div class="p-3.5 flex items-center justify-between gap-2 opacity-60 bg-stone-50/50 dark:bg-stone-900/30 cursor-pointer" onclick="toggleItemChecked('${item.id}')">
@@ -1950,7 +1946,7 @@ function render() {
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
               <div>
                 <h2 class="text-sm font-extrabold text-stone-900 dark:text-stone-100">Vorratsschrank</h2>
-                <p class="text-[11px] text-stone-500 dark:text-stone-400 font-medium">Fester Verbrauch pro Tag 🤖</p>
+                <p class="text-[11px] text-stone-500 font-medium">Fester Verbrauch pro Tag 🤖</p>
               </div>
               <div class="flex gap-1.5">
                 <button onclick="addMissingPantryToShopping();" class="bg-red-600 hover:bg-red-700 text-white text-xs font-extrabold px-3 py-2 rounded-xl shadow-xs">+ Fehlendes auf Liste</button>
@@ -2023,7 +2019,7 @@ function render() {
                             <span>${displayPieces} ${pantryUnit}</span>
                             <span class="text-xs">✎</span>
                           </button>
-                          <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full ${low ? 'text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/60 animate-pulse' : 'text-stone-500 dark:text-stone-400 bg-stone-100 dark:bg-stone-800'}">
+                          <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full ${low ? 'text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/60 animate-pulse' : 'text-stone-500 bg-stone-100 dark:bg-stone-800'}">
                             ${empty ? '🚨 LEER!' : (daysLeft !== null ? (daysLeft <= 0 ? '⚠️ Leer!' : `~${daysLeft} Tage`) : `Min: ${it.minPieces||1}`)}
                           </span>
                           <span class="text-[9px] font-semibold ${it.intervallAktiv === false ? 'text-amber-500' : 'text-stone-400'}">
@@ -2108,7 +2104,7 @@ function render() {
           <div class="bg-white dark:bg-[#1a1a1a] border border-stone-200 dark:border-stone-800 rounded-3xl p-3.5 shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2.5">
             <div>
               <h2 class="text-sm font-extrabold text-stone-900 dark:text-stone-100 flex items-center gap-1"><span class="text-amber-500 font-black">★</span> Favoriten (${favs.length})</h2>
-              <p class="text-[11px] text-stone-500 dark:text-stone-400 font-medium">Nach Gebrauchshäufigkeit sortiert</p>
+              <p class="text-[11px] text-stone-500 font-medium">Nach Gebrauchshäufigkeit sortiert</p>
             </div>
             <div class="flex gap-1.5">
               <button onclick="addAllFavoritesToList();" class="bg-red-600 hover:bg-red-700 text-white text-xs font-extrabold px-3 py-2 rounded-xl shadow-xs">+ Alle auf Liste</button>
@@ -2131,7 +2127,7 @@ function render() {
                         <input type="text" value="${fav.name}" onchange="updateFavoriteName('${safeFavName}', this.value)" class="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 rounded-xl px-2.5 py-1 text-xs font-extrabold shadow-xs focus:outline-none focus:border-red-600" title="Tippen zum Umbenennen" />
                         ${usageCount > 0 ? `<span class="text-[9px] bg-red-500/10 text-red-600 dark:text-red-400 font-extrabold px-2 py-0.5 rounded-full shrink-0">${usageCount}x</span>` : ''}
                       </div>
-                      <span class="text-[10px] text-stone-500 dark:text-stone-400 block truncate font-medium pl-1">${aDef ? aDef.name : `Gang ${aNum}`} • <b>${fPrice.toFixed(2)} €</b></span>
+                      <span class="text-[10px] text-stone-500 block truncate font-medium pl-1">${aDef ? aDef.name : `Gang ${aNum}`} • <b>${fPrice.toFixed(2)} €</b></span>
                     </div>
                   </div>
                   <div class="flex items-center gap-1.5 shrink-0">
@@ -2162,7 +2158,7 @@ function render() {
                     <span class="text-base w-8 h-8 rounded-xl bg-stone-50 dark:bg-stone-700 border border-stone-200 dark:border-stone-600 flex items-center justify-center shrink-0 shadow-xs">${b.icon}</span>
                     <div class="min-w-0">
                       <span class="font-bold text-xs text-stone-900 dark:text-stone-100 block group-hover:text-red-600 truncate">${b.store}</span>
-                      <span class="text-[9px] text-stone-500 dark:text-stone-400 truncate block">${b.branch}</span>
+                      <span class="text-[9px] text-stone-500 truncate block">${b.branch}</span>
                     </div>
                   </div>
                   <span class="text-[10px] font-bold text-stone-400 shrink-0 ml-1">Öffnen ↗</span>
@@ -2182,12 +2178,12 @@ function render() {
             <div class="flex justify-between items-center">
               <div>
                 <h3 class="font-extrabold text-xs text-stone-900 dark:text-stone-100">📊 Einkaufs-Historie (${state.purchaseHistory.length})</h3>
-                <p class="text-[10px] text-stone-500 dark:text-stone-400 font-medium">Vergangene Kassenbons</p>
+                <p class="text-[10px] text-stone-500 font-medium">Vergangene Kassenbons</p>
               </div>
-              ${state.purchaseHistory.length>0?`<button onclick="if(confirm('Historie leeren?')){ state.purchaseHistory=[]; state.expandedHistoryIds=[]; saveState(); render(); }" class="text-xs font-bold text-red-600 dark:text-red-400">Leeren</button>`:''}
+              ${state.purchaseHistory.length>0?`<button onclick="if(confirm('Historie leeren?')){ state.purchaseHistory=[]; state.expandedHistoryIds=[]; saveState(); render(); }" class="text-xs font-bold text-red-600">Leeren</button>`:''}
             </div>
             ${state.purchaseHistory.length === 0 ? `
-              <p class="text-xs text-stone-500 dark:text-stone-400 py-1 font-medium">Keine Historie vorhanden.</p>
+              <p class="text-xs text-stone-500 py-1 font-medium">Keine Historie vorhanden.</p>
             ` : `
               <div class="space-y-1.5 max-h-96 overflow-y-auto custom-scrollbar">
                 ${state.purchaseHistory.map(rec => {
@@ -2199,7 +2195,7 @@ function render() {
                           <span class="font-bold text-stone-400">${isExpanded ? '▼' : '▶'}</span>
                           <div>
                             <span class="font-bold text-stone-900 dark:text-stone-100 text-xs block">${rec.listName}</span>
-                            <span class="text-[9px] text-stone-500 dark:text-stone-400">${new Date(rec.date).toLocaleDateString('de-DE')} • ${rec.itemCount} Artikel</span>
+                            <span class="text-[9px] text-stone-500">${new Date(rec.date).toLocaleDateString('de-DE')} • ${rec.itemCount} Artikel</span>
                           </div>
                         </div>
                         <span class="font-black text-xs text-red-600 dark:text-red-400">${(rec.finalTotal||0).toFixed(2)} €</span>
@@ -2244,7 +2240,7 @@ function render() {
             <div class="flex justify-between items-center">
               <div>
                 <h3 class="font-extrabold text-xs text-stone-900 dark:text-stone-100">Gänge für "${curList.name}"</h3>
-                <p class="text-[10px] text-stone-500 dark:text-stone-400 font-medium">Gänge verwalten & löschen</p>
+                <p class="text-[10px] text-stone-500 font-medium">Gänge verwalten & löschen</p>
               </div>
               <button onclick="openNewAisleModal();" class="bg-red-600 text-white text-xs font-extrabold px-2.5 py-1.5 rounded-xl shadow-xs">+ Gang</button>
             </div>
@@ -2277,7 +2273,7 @@ function render() {
             <div class="flex justify-between items-center flex-wrap gap-2">
               <div>
                 <h3 class="font-extrabold text-xs text-stone-900 dark:text-stone-100">🗄️ Produktdatenbank (${dbItems.length})</h3>
-                <p class="text-[10px] text-stone-500 dark:text-stone-400 font-medium">Artikel dauerhaft löschen</p>
+                <p class="text-[10px] text-stone-500 font-medium">Artikel dauerhaft löschen</p>
               </div>
               <div class="flex gap-1.5">
                 <button onclick="state.showDuplicateModal=true; render();" class="bg-amber-500 hover:bg-amber-600 text-white text-xs font-extrabold px-3 py-1.5 rounded-xl shadow-xs">🔍 Ähnliche / Duplikate</button>
@@ -2316,7 +2312,7 @@ function render() {
                   <div class="flex items-center gap-2.5">
                     <div>
                       <span class="font-extrabold text-xs text-stone-900 dark:text-stone-100 block">${m.name}</span>
-                      <span class="text-[10px] text-stone-500 dark:text-stone-400">Gang ${m.aisleNumber || 6} • ${m.shopUnit || 'Packung'}</span>
+                      <span class="text-[10px] text-stone-500">Gang ${m.aisleNumber || 6} • ${m.shopUnit || 'Packung'}</span>
                     </div>
                   </div>
                   <span class="text-xs font-bold text-red-600 dark:text-red-400 bg-red-500/10 px-2 py-1 rounded-xl shrink-0">+ Auswählen</span>
@@ -2360,7 +2356,7 @@ function render() {
                   <div class="flex items-center gap-2.5">
                     <div>
                       <span class="font-extrabold text-xs text-stone-900 dark:text-stone-100 block">✨ ${cand.name}</span>
-                      <span class="text-[10px] text-stone-500 dark:text-stone-400">Gang ${cand.aisleNumber || 6} • ${cand.shopUnit || 'Packung'}</span>
+                      <span class="text-[10px] text-stone-500">Gang ${cand.aisleNumber || 6} • ${cand.shopUnit || 'Packung'}</span>
                     </div>
                   </div>
                   <span class="text-xs font-bold text-white bg-red-600 px-3 py-1 rounded-xl shrink-0">Das ist er ✓</span>
@@ -2564,7 +2560,7 @@ function render() {
                           <div class="flex items-center gap-2.5 min-w-0 flex-1">
                             <div class="min-w-0 flex-1 pr-1">
                               <span class="font-bold text-stone-900 dark:text-stone-100 block break-words text-xs leading-snug">${item.name}</span>
-                              <span class="text-[10px] text-stone-500 dark:text-stone-400 block truncate font-medium">Einheit: <b>${item.shopUnit || 'Packung'}</b> • Preis: <b>${itemPrice.toFixed(2)} €</b> • Gang ${itemAisle}</span>
+                              <span class="text-[10px] text-stone-500 block truncate font-medium">Einheit: <b>${item.shopUnit || 'Packung'}</b> • Preis: <b>${itemPrice.toFixed(2)} €</b> • Gang ${itemAisle}</span>
                             </div>
                           </div>
                           <button onclick="purgeProductFromDatabase('${item.id}');" class="px-3 py-1.5 bg-red-50 hover:bg-red-600 hover:text-white text-red-600 font-extrabold rounded-xl border border-red-200 shrink-0 shadow-xs text-xs self-end sm:self-center">Löschen 🗑</button>
@@ -2591,7 +2587,7 @@ function render() {
               <div class="flex items-center gap-1.5"><span class="text-base">📷</span><h3 class="font-extrabold text-sm">Barcode scannen & benennen</h3></div>
               <button onclick="closeBarcodeScannerModal();" class="text-stone-400 hover:text-stone-700 font-bold">✕</button>
             </div>
-            <p class="text-xs text-stone-500 dark:text-stone-400 font-medium">Halte den Strichcode vor die Kamera. Wenn er nicht bekannt ist, kannst du ihn sofort selbst benennen!</p>
+            <p class="text-xs text-stone-500 font-medium">Halte den Strichcode vor die Kamera. Wenn er nicht bekannt ist, kannst du ihn sofort selbst benennen!</p>
             
             <div id="reader" class="w-full overflow-hidden rounded-2xl bg-black min-h-[250px]"></div>
 
@@ -2765,7 +2761,7 @@ function render() {
             <div class="grid grid-cols-2 gap-2">
               <div>
                 <label class="text-[10px] font-bold text-red-600 dark:text-red-400 block mb-1">🛒 Einkaufseinheit</label>
-                <select id="new-pantry-shopunit" class="w-full bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-xl px-2 py-1.5 text-xs font-bold text-red-600 dark:text-red-400 shadow-xs">
+                <select id="new-pantry-shopunit" class="w-full bg-red-50 dark:bg-red-950/40 border border-red-200 rounded-xl px-2 py-1.5 text-xs font-bold text-red-600 shadow-xs">
                   ${COMMON_UNITS.map(u => `<option value="${u}" ${u==='Packung'?'selected':''}>${u}</option>`).join('')}
                 </select>
               </div>
@@ -2781,8 +2777,8 @@ function render() {
               <div><label class="text-[10px] font-bold text-stone-600 dark:text-stone-400 block mb-1">Min. Menge (Warnung)</label><input type="number" id="new-pantry-min" min="1" value="2" class="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 rounded-xl px-2.5 py-1.5 text-xs font-bold shadow-xs" /></div>
             </div>
             <div class="grid grid-cols-2 gap-2">
-              <div><label class="text-[10px] font-bold text-red-600 dark:text-red-400 block mb-1">Anzahl Packungen kaufen</label><input type="number" id="new-pantry-buyqty" min="1" value="1" class="w-full bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 rounded-xl px-2.5 py-1.5 text-xs font-bold shadow-xs" /></div>
-              <div><label class="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 block mb-1">Inhalt pro Packung</label><input type="number" id="new-pantry-perpack" min="1" value="10" class="w-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 text-emerald-800 dark:text-emerald-300 rounded-xl px-2.5 py-1.5 text-xs font-bold shadow-xs" /></div>
+              <div><label class="text-[10px] font-bold text-red-600 dark:text-red-400 block mb-1">Anzahl Packungen kaufen</label><input type="number" id="new-pantry-buyqty" min="1" value="1" class="w-full bg-red-50 dark:bg-red-950/40 border border-red-200 text-red-600 rounded-xl px-2.5 py-1.5 text-xs font-bold shadow-xs" /></div>
+              <div><label class="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 block mb-1">Inhalt pro Packung</label><input type="number" id="new-pantry-perpack" min="1" value="10" class="w-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 text-emerald-800 rounded-xl px-2.5 py-1.5 text-xs font-bold shadow-xs" /></div>
             </div>
             <div><label class="text-[10px] font-bold text-stone-600 dark:text-stone-400 block mb-1">Verbrauch / Tag (Fest)</label><input type="number" step="0.1" id="new-pantry-daily" min="0.1" value="3" class="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 rounded-xl px-2.5 py-1.5 text-xs shadow-xs" /></div>
             
@@ -2817,7 +2813,7 @@ function render() {
             <div class="grid grid-cols-2 gap-2">
               <div>
                 <label class="text-[10px] font-bold text-red-600 dark:text-red-400 block mb-1">🛒 Einkaufseinheit</label>
-                <select id="edit-pantry-shopunit" class="w-full bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-xl px-2 py-1.5 text-xs font-bold text-red-600 dark:text-red-400 shadow-xs">
+                <select id="edit-pantry-shopunit" class="w-full bg-red-50 dark:bg-red-950/40 border border-red-200 rounded-xl px-2 py-1.5 text-xs font-bold text-red-600 shadow-xs">
                   ${COMMON_UNITS.map(u => `<option value="${u}" ${u===(item.shopUnit||'Packung')?'selected':''}>${u}</option>`).join('')}
                 </select>
               </div>
@@ -2833,8 +2829,8 @@ function render() {
               <div><label class="text-[10px] font-bold text-stone-700 dark:text-stone-300 block mb-1">Min. Menge (Warnung)</label><input type="number" id="edit-pantry-min" value="${item.minPieces||1}" class="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 rounded-xl px-2.5 py-1.5 text-xs font-bold shadow-xs" /></div>
             </div>
             <div class="grid grid-cols-2 gap-2">
-              <div><label class="text-[10px] font-bold text-red-600 dark:text-red-400 block mb-1">Anzahl Packungen kaufen</label><input type="number" id="edit-pantry-buyqty" min="1" value="${item.buyQty||1}" class="w-full bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 rounded-xl px-2.5 py-1.5 text-xs font-bold shadow-xs" /></div>
-              <div><label class="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 block mb-1">Inhalt pro Packung</label><input type="number" id="edit-pantry-perpack" min="1" value="${item.itemsPerPack||10}" class="w-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 text-emerald-800 dark:text-emerald-300 rounded-xl px-2.5 py-1.5 text-xs font-bold shadow-xs" /></div>
+              <div><label class="text-[10px] font-bold text-red-600 dark:text-red-400 block mb-1">Anzahl Packungen kaufen</label><input type="number" id="edit-pantry-buyqty" min="1" value="${item.buyQty||1}" class="w-full bg-red-50 dark:bg-red-950/40 border border-red-200 text-red-600 rounded-xl px-2.5 py-1.5 text-xs font-bold shadow-xs" /></div>
+              <div><label class="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 block mb-1">Inhalt pro Packung</label><input type="number" id="edit-pantry-perpack" min="1" value="${item.itemsPerPack||10}" class="w-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 text-emerald-800 rounded-xl px-2.5 py-1.5 text-xs font-bold shadow-xs" /></div>
             </div>
             <div><label class="text-[10px] font-bold text-stone-700 dark:text-stone-300 block mb-1">Verbrauch / Tag (Fest)</label><input type="number" step="0.1" id="edit-pantry-daily" value="${item.dailyConsumption||3}" class="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 rounded-xl px-2.5 py-1.5 text-xs font-bold shadow-xs" /></div>
             
@@ -2885,7 +2881,7 @@ function render() {
               </select>
             </div>
             <div class="bg-stone-50 dark:bg-stone-800/50 p-3 rounded-2xl border border-stone-200 dark:border-stone-700 space-y-1 shadow-inner">
-              <div class="flex justify-between items-center"><label class="text-xs font-bold text-stone-800 dark:text-stone-200">Standard-Preis (€)</label><span id="modal-pack-indicator" class="text-[10px] font-bold ${mult>1?'text-amber-600 dark:text-amber-400':'text-stone-400'}">${mult>1?`×${mult}`:'1 Stk.'}</span></div>
+              <div class="flex justify-between items-center"><label class="text-xs font-bold text-stone-800 dark:text-stone-200">Standard-Preis (€)</label><span id="modal-pack-indicator" class="text-[10px] font-bold ${mult>1?'text-amber-600':'text-stone-400'}">${mult>1?`×${mult}`:'1 Stk.'}</span></div>
               <input type="number" step="0.01" id="edit-item-price" value="${bPrice}" oninput="updateModalPackCalculation()" class="w-full bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 border border-stone-200 dark:border-stone-700 rounded-xl px-2.5 py-1.5 text-xs font-bold shadow-xs" />
             </div>
             
@@ -2896,11 +2892,11 @@ function render() {
               <div class="grid grid-cols-2 gap-2">
                 <div>
                   <label class="text-[10px] font-bold text-stone-600 dark:text-stone-400 block mb-1">Aktionspreis (€)</label>
-                  <input type="number" step="0.01" id="edit-item-promo" value="${promoVal}" oninput="document.getElementById('edit-item-promopercent').value=''; updateModalPackCalculation();" placeholder="z.B. 0.99" class="w-full bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 border border-red-300 dark:border-red-800 rounded-xl px-2.5 py-1.5 text-xs font-bold text-red-600 dark:text-red-400 shadow-xs" />
+                  <input type="number" step="0.01" id="edit-item-promo" value="${promoVal}" oninput="document.getElementById('edit-item-promopercent').value=''; updateModalPackCalculation();" placeholder="z.B. 0.99" class="w-full bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 border border-red-300 dark:border-red-800 rounded-xl px-2.5 py-1.5 text-xs font-bold text-red-600 shadow-xs" />
                 </div>
                 <div>
                   <label class="text-[10px] font-bold text-stone-600 dark:text-stone-400 block mb-1">Rabatt in %</label>
-                  <input type="number" step="1" min="0" max="100" id="edit-item-promopercent" value="${promoPercVal}" oninput="document.getElementById('edit-item-promo').value=''; updateModalPackCalculation();" placeholder="z.B. 30" class="w-full bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 border border-red-300 dark:border-red-800 rounded-xl px-2.5 py-1.5 text-xs font-bold text-red-600 dark:text-red-400 shadow-xs" />
+                  <input type="number" step="1" min="0" max="100" id="edit-item-promopercent" value="${promoPercVal}" oninput="document.getElementById('edit-item-promo').value=''; updateModalPackCalculation();" placeholder="z.B. 30" class="w-full bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 border border-red-300 dark:border-red-800 rounded-xl px-2.5 py-1.5 text-xs font-bold text-red-600 shadow-xs" />
                 </div>
               </div>
               <div class="flex gap-1 overflow-x-auto custom-scrollbar py-0.5">
@@ -2949,7 +2945,7 @@ function getFilteredDbHtml(marketKey) {
   const dbItems = getCatalog(), fQ = (state.dbSearchFilter || '').toLowerCase().trim();
   const filteredDb = fQ ? dbItems.filter(p => p.name.toLowerCase().includes(fQ)) : dbItems;
   if (filteredDb.length === 0) {
-    return `<div class="p-3 text-xs text-stone-500 dark:text-stone-400 text-center font-medium">Kein Artikel gefunden</div>`;
+    return `<div class="p-3 text-xs text-stone-500 text-center font-medium">Kein Artikel gefunden</div>`;
   }
   return filteredDb.map(p => {
     const aNum = getProductAisleForMarket(p.name, marketKey), curP = getBaseUnitPrice(p.name, p.defaultPrice || 0);
@@ -2958,7 +2954,7 @@ function getFilteredDbHtml(marketKey) {
         <div class="flex items-center gap-2.5 min-w-0 flex-1">
           <div class="min-w-0 flex-1">
             <span class="font-bold text-stone-900 dark:text-stone-100 leading-snug break-words block">${p.name}</span>
-            <span class="text-stone-500 dark:text-stone-400 text-[10px] block truncate font-medium">Gang ${aNum} • Einheit: <b>${p.shopUnit||'Packung'}</b> • ${curP.toFixed(2)}€</span>
+            <span class="text-stone-500 text-[10px] block truncate font-medium">Gang ${aNum} • Einheit: <b>${p.shopUnit||'Packung'}</b> • ${curP.toFixed(2)}€</span>
           </div>
         </div>
         <button onclick="purgeProductFromDatabase('${p.id}');" class="px-2.5 py-1 bg-red-50 hover:bg-red-600 hover:text-white text-red-600 rounded-xl text-xs font-bold border border-red-200 shrink-0 shadow-xs">🗑</button>
@@ -3336,7 +3332,7 @@ async function fetchProductByBarcode(barcode) {
   try {
     if (state.savedBarcodes && state.savedBarcodes[barcode]) {
       const rememberedName = state.savedBarcodes[barcode];
-      showToast(`✨ Gespeicherter Barcode! Erkannt as: "${rememberedName}"`);
+      showToast(`✨ Gespeicherter Barcode! Erkannt als: "${rememberedName}"`);
       handleScannedProductNameResolved(rememberedName, barcode);
       return;
     }
