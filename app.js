@@ -1,4 +1,4 @@
-// app.js - Mit echtem Foto-Upload & Kamera-Schnappschuss beim Barcode-Scanners
+// app.js - Mit echtem Foto-Upload & Kamera-Schnappschuss beim Barcode-Scanners (Fix für vertikalen Textumbruch)
 
 function getGroqApiKey() {
   let key = localStorage.getItem('dino_groq_api_key_v1');
@@ -1336,8 +1336,8 @@ function updateSearchDropdown() {
       addItem(rawName, 1, '${exactInfo.shopUnit}');
       render();
     " class="p-3 bg-red-500/10 hover:bg-red-500/20 cursor-pointer text-xs font-bold text-red-600 dark:text-red-400 flex justify-between items-center border-b border-stone-200/60 dark:border-stone-800/80">
-      <span class="leading-snug break-words">✨ Als neuen Artikel hinzufügen: "${searchItemName}"${priceText}</span>
-      <span class="shrink-0 ml-2">Gang ${exactInfo.aisleNumber} ↗</span>
+      <span class="leading-snug break-words flex-1 pr-2">✨ Als neuen Artikel hinzufügen: "${searchItemName}"${priceText}</span>
+      <span class="shrink-0">Gang ${exactInfo.aisleNumber} ↗</span>
     </div>
   `;
 
@@ -1357,20 +1357,24 @@ function renderDropdownItem(p, marketKey) {
   const imgUrl = getItemImageForName(p.name);
   
   return `
-    <div class="p-3 hover:bg-stone-50 dark:hover:bg-stone-800/60 flex items-center justify-between gap-3 border-b border-stone-100 dark:border-stone-800/80 last:border-0 text-xs">
-      <div class="flex items-center gap-3 min-w-0 flex-1">
-        ${imgUrl ? `<img src="${imgUrl}" class="w-12 h-12 object-cover rounded-xl shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" /><div class="w-12 h-12 rounded-xl bg-stone-100 dark:bg-stone-800 items-center justify-center text-xs shrink-0 border border-stone-200 dark:border-stone-700" style="display:none;">🛒</div>` : `<div class="w-12 h-12 rounded-xl bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-xs shrink-0 border border-stone-200 dark:border-stone-700">🛒</div>`}
-        <div class="min-w-0 flex-1">
-          <span class="font-bold text-stone-900 dark:text-stone-100 leading-snug block break-words">${p.name}</span>
-          <span class="text-[10px] text-stone-500 block truncate">${aDef ? aDef.name : `Gang ${aNum}`} • ${pPrice.toFixed(2)}€</span>
+    <div class="p-3 hover:bg-stone-50 dark:hover:bg-stone-800/60 flex flex-col gap-2.5 border-b border-stone-100 dark:border-stone-800/80 last:border-0 text-xs">
+      ${imgUrl ? `
+        <div class="w-full flex justify-center bg-stone-100 dark:bg-stone-800 rounded-2xl p-2 border border-stone-200 dark:border-stone-700 shadow-xs">
+          <img src="${imgUrl}" class="max-h-36 w-auto object-contain rounded-xl" onerror="this.parentElement.style.display='none';" />
         </div>
-      </div>
-      <div class="flex items-center gap-1.5 shrink-0" onclick="event.stopPropagation();">
-        <select id="vpe-in-${p.id}" class="bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 rounded-lg px-1.5 py-1 text-[10px] font-semibold">
-          ${COMMON_UNITS.map(u => `<option value="${u}" ${u===defaultShopUnit?'selected':''}>${u}</option>`).join('')}
-        </select>
-        <button onclick="event.stopPropagation(); toggleFavorite('${p.name.replace(/'/g, "\\'")}');" class="p-1 text-sm ${isFav?'text-amber-400 font-black':'text-stone-300 dark:text-stone-600'}">${isFav?'★':'☆'}</button>
-        <button onclick="event.stopPropagation(); const cu=document.getElementById('vpe-in-${p.id}').value; persistProduct({ name: '${p.name.replace(/'/g, "\\'")}', shopUnit: cu, aisleNumber: ${aNum} }); addItem({ name: '${p.name.replace(/'/g, "\\'")}', shopUnit: cu, defaultPrice: ${pPrice}, depositAmount: ${pDep}, aisleNumber: ${aNum} }, 1, cu); render();" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-2.5 py-1.5 rounded-xl shadow-xs">+ Liste</button>
+      ` : ''}
+      <div class="flex items-center justify-between gap-3 w-full">
+        <div class="min-w-0 flex-1">
+          <span class="font-bold text-stone-900 dark:text-stone-100 leading-snug block break-words text-sm">${p.name}</span>
+          <span class="text-[11px] text-stone-500 block truncate mt-0.5">${aDef ? aDef.name : `Gang ${aNum}`} • ${pPrice.toFixed(2)}€</span>
+        </div>
+        <div class="flex items-center gap-1.5 shrink-0" onclick="event.stopPropagation();">
+          <select id="vpe-in-${p.id}" class="bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 rounded-lg px-2 py-1.5 text-[11px] font-semibold">
+            ${COMMON_UNITS.map(u => `<option value="${u}" ${u===defaultShopUnit?'selected':''}>${u}</option>`).join('')}
+          </select>
+          <button onclick="event.stopPropagation(); toggleFavorite('${p.name.replace(/'/g, "\\'")}');" class="p-1.5 text-base ${isFav?'text-amber-400 font-black':'text-stone-300 dark:text-stone-600'}">${isFav?'★':'☆'}</button>
+          <button onclick="event.stopPropagation(); const cu=document.getElementById('vpe-in-${p.id}').value; persistProduct({ name: '${p.name.replace(/'/g, "\\'")}', shopUnit: cu, aisleNumber: ${aNum} }); addItem({ name: '${p.name.replace(/'/g, "\\'")}', shopUnit: cu, defaultPrice: ${pPrice}, depositAmount: ${pDep}, aisleNumber: ${aNum} }, 1, cu); render();" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-2 rounded-xl shadow-xs">+ Liste</button>
+        </div>
       </div>
     </div>
   `;
@@ -1830,7 +1834,7 @@ function render() {
               </button>
               <button onclick="const n=document.getElementById('main-search-input').value.trim(); if(n){ addItem(n, 1); render(); }" class="bg-red-600 hover:bg-red-700 text-white text-xs font-extrabold px-3.5 py-2.5 rounded-2xl shrink-0 shadow-xs">+ Hinzufügen</button>
             </div>
-            <div id="search-dropdown-container" class="hidden absolute left-3 right-3 top-full mt-2 bg-white dark:bg-[#1a1a1a] border border-stone-200 dark:border-stone-800 rounded-3xl shadow-xl overflow-hidden z-40 max-h-60 overflow-y-auto custom-scrollbar"></div>
+            <div id="search-dropdown-container" class="hidden absolute left-3 right-3 top-full mt-2 bg-white dark:bg-[#1a1a1a] border border-stone-200 dark:border-stone-800 rounded-3xl shadow-xl overflow-hidden z-40 max-h-72 overflow-y-auto custom-scrollbar"></div>
           </div>
 
           <div class="bg-white dark:bg-[#1a1a1a] border border-stone-200 dark:border-stone-800 rounded-3xl p-3.5 shadow-xs space-y-2.5">
@@ -3332,7 +3336,7 @@ async function fetchProductByBarcode(barcode) {
   try {
     if (state.savedBarcodes && state.savedBarcodes[barcode]) {
       const rememberedName = state.savedBarcodes[barcode];
-      showToast(`✨ Gespeicherter Barcode! Erkannt als: "${rememberedName}"`);
+      showToast(`✨ Gespeicherter Barcode! Erkannt as: "${rememberedName}"`);
       handleScannedProductNameResolved(rememberedName, barcode);
       return;
     }
