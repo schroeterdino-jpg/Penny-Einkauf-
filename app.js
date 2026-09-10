@@ -1,4 +1,4 @@
-// app.js - Komplettversion inklusive robuster Open Food Facts Bild-Integration über Barcodes
+// app.js - Komplettversion inklusive robuster Open Food Facts Bild-Integration über Barcodes (Bilder in vergrößerter Ansicht)
 
 function getGroqApiKey() {
   let key = localStorage.getItem('dino_groq_api_key_v1');
@@ -19,7 +19,6 @@ function getOpenFoodFactsImageUrl(barcodeOrName) {
   if (!barcodeOrName) return '';
   let b = String(barcodeOrName).trim();
   
-  // Wenn direkt ein Barcode übergeben wurde und ein gespeichertes API-Bild existiert, dieses bevorzugen
   if (/^\d{8,14}$/.test(b)) {
     if (state.savedImages && state.savedImages[b]) {
       return state.savedImages[b];
@@ -41,18 +40,15 @@ function getItemImageForName(itemName) {
   let foundUrl = '';
   const searchName = itemName.toLowerCase().trim();
   
-  // 1. Suche direkt in state.savedImages, falls dort der Produktname als Schlüssel hinterlegt ist
   if (state.savedImages) {
     if (state.savedImages[searchName]) {
       return state.savedImages[searchName];
     }
   }
 
-  // 2. Suche über gespeicherte Barcodes / Produktnamen
   if (state.savedBarcodes) {
     Object.keys(state.savedBarcodes).forEach(bc => {
       if (state.savedBarcodes[bc] && state.savedBarcodes[bc].toLowerCase().trim() === searchName) {
-        // Prüfen, ob wir für diesen Barcode direkt ein Bild in savedImages haben
         if (state.savedImages && state.savedImages[bc]) {
           foundUrl = state.savedImages[bc];
         } else {
@@ -1345,7 +1341,7 @@ function renderDropdownItem(p, marketKey) {
   return `
     <div class="p-2.5 hover:bg-stone-50 dark:hover:bg-stone-800/60 flex items-center justify-between gap-2 border-b border-stone-100 dark:border-stone-800/80 last:border-0 text-xs">
       <div class="flex items-center gap-2.5 min-w-0 flex-1">
-        ${imgUrl ? `<img src="${imgUrl}" class="w-8 h-8 object-cover rounded-xl shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" /><div class="w-8 h-8 rounded-xl bg-stone-100 dark:bg-stone-800 items-center justify-center text-xs shrink-0 border border-stone-200 dark:border-stone-700" style="display:none;">🛒</div>` : `<div class="w-8 h-8 rounded-xl bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-xs shrink-0 border border-stone-200 dark:border-stone-700">🛒</div>`}
+        ${imgUrl ? `<img src="${imgUrl}" class="w-12 h-12 object-cover rounded-xl shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" /><div class="w-12 h-12 rounded-xl bg-stone-100 dark:bg-stone-800 items-center justify-center text-xs shrink-0 border border-stone-200 dark:border-stone-700" style="display:none;">🛒</div>` : `<div class="w-12 h-12 rounded-xl bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-xs shrink-0 border border-stone-200 dark:border-stone-700">🛒</div>`}
         <div class="min-w-0 flex-1 pr-1">
           <span class="font-bold text-stone-900 dark:text-stone-100 leading-snug break-words block">${p.name}</span>
           <span class="text-[10px] text-stone-500 block truncate">${aDef ? aDef.name : `Gang ${aNum}`} • ${pPrice.toFixed(2)}€</span>
@@ -1869,7 +1865,7 @@ function render() {
                     return `
                       <div class="${itemBoxPad} flex items-center justify-between gap-3 hover:bg-stone-50/50 dark:hover:bg-stone-800/35 transition-colors ${itemBg}" onclick="toggleItemChecked('${item.id}')" title="Antippen zum Abhaken">
                         <div class="flex items-center gap-3.5 flex-1 min-w-0">
-                          ${itemImgUrl ? `<img src="${itemImgUrl}" class="w-10 h-10 object-cover rounded-2xl shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" /><div class="w-10 h-10 rounded-2xl bg-stone-100 dark:bg-stone-800 items-center justify-center text-sm shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs" style="display:none;">🛒</div>` : `<div class="w-10 h-10 rounded-2xl bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-sm shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs">🛒</div>`}
+                          ${itemImgUrl ? `<img src="${itemImgUrl}" class="w-14 h-14 object-cover rounded-2xl shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" /><div class="w-14 h-14 rounded-2xl bg-stone-100 dark:bg-stone-800 items-center justify-center text-sm shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs" style="display:none;">🛒</div>` : `<div class="w-14 h-14 rounded-2xl bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-sm shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs">🛒</div>`}
                           <div class="min-w-0 flex-1 py-0.5">
                             <div class="flex items-center gap-2.5 flex-wrap">
                               <button onclick="event.stopPropagation(); toggleFavorite('${item.name.replace(/'/g, "\\'")}');" class="text-base ${isFav ? 'text-amber-400 font-black' : 'text-stone-300 dark:text-stone-600 hover:text-amber-400'} transition-colors" title="${isFav ? 'Aus Favoriten entfernen' : 'Als Favorit speichern'}">${isFav ? '★' : '☆'}</button>
@@ -2107,7 +2103,7 @@ function render() {
               return `
                 <div class="bg-white dark:bg-[#1a1a1a] border border-stone-200 dark:border-stone-800 rounded-3xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-xs">
                   <div class="flex items-center gap-2.5 min-w-0 flex-1">
-                    ${imgUrl ? `<img src="${imgUrl}" class="w-9 h-9 object-cover rounded-xl shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" /><div class="w-9 h-9 rounded-xl bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-xs shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs" style="display:none;">🛒</div>` : `<div class="w-9 h-9 rounded-xl bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-xs shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs">🛒</div>`}
+                    ${imgUrl ? `<img src="${imgUrl}" class="w-12 h-12 object-cover rounded-xl shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" /><div class="w-12 h-12 rounded-xl bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-xs shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs" style="display:none;">🛒</div>` : `<div class="w-12 h-12 rounded-xl bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-xs shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs">🛒</div>`}
                     <div class="min-w-0 flex-1 space-y-1">
                       <div class="flex items-center gap-1.5">
                         <input type="text" value="${fav.name}" onchange="updateFavoriteName('${safeFavName}', this.value)" class="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 rounded-xl px-2.5 py-1 text-xs font-extrabold shadow-xs focus:outline-none focus:border-red-600" title="Tippen zum Umbenennen" />
@@ -3294,7 +3290,6 @@ async function fetchProductByBarcode(barcode) {
     if (data.status === 1 && data.product) {
       const rawApiName = (data.product.product_name || data.product.brands || `Produkt ${barcode}`).trim();
       
-      // Direkt die offizielle Bild-URL von der API abspeichern, falls vorhanden!
       const apiImageUrl = data.product.image_front_url || data.product.image_url || '';
       if (apiImageUrl) {
         if (!state.savedImages) state.savedImages = {};
