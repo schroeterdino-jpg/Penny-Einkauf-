@@ -1,4 +1,4 @@
-// app.js - Mit echtem Foto-Upload & Kamera-Schnappschuss beim Barcode-Scanner & Bearbeiten-Modal
+// app.js - Mit sauberem Such-Dropdown (ohne unschöne Zeilenumbrüche)
 
 function getGroqApiKey() {
   let key = localStorage.getItem('dino_groq_api_key_v1');
@@ -3548,7 +3548,7 @@ function executeScanIntent(intent) {
   const enteredDeposit = depositInput && depositInput.value.trim() !== '' ? parseFloat(depositInput.value) : 0;
 
   if (!finalName) {
-    state.showScanIntentModal = false;
+    state.showScanIntentModal= false;
     render();
     return;
   }
