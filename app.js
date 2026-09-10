@@ -1,4 +1,4 @@
-// app.js - Komplettversion inklusive robuster Open Food Facts Bild-Integration über Barcodes (Bilder in vergrößerter Ansicht)
+// app.js - Komplettversion (inklusive Bild-Mitnahme beim Umbenennen von Artikeln)
 
 function getGroqApiKey() {
   let key = localStorage.getItem('dino_groq_api_key_v1');
@@ -14,7 +14,6 @@ function getGroqApiKey() {
 let recognition = null;
 let isListening = false;
 
-// Robuster Open Food Facts Bild-URL Generator mit Fallback auf direktes API-Bild oder universelles front.jpg
 function getOpenFoodFactsImageUrl(barcodeOrName) {
   if (!barcodeOrName) return '';
   let b = String(barcodeOrName).trim();
@@ -669,6 +668,15 @@ function persistProduct(p, oldName = null) {
 
     if (state.savedPrices[oldName]) { state.savedPrices[newName] = state.savedPrices[oldName]; delete state.savedPrices[oldName]; }
     if (state.savedDeposits[oldName]) { state.savedDeposits[newName] = state.savedDeposits[oldName]; delete state.savedDeposits[oldName]; }
+
+    // WICHTIG: Bildverknüpfung beim Umbenennen mitnehmen!
+    if (state.savedImages && state.savedImages[oldLower]) {
+      state.savedImages[newLower] = state.savedImages[oldLower];
+      delete state.savedImages[oldLower];
+    } else if (state.savedImages && state.savedImages[oldName]) {
+      state.savedImages[newName] = state.savedImages[oldName];
+      delete state.savedImages[oldName];
+    }
 
     state.favorites = cleanDuplicateList(state.favorites.map(f => (String(f).toLowerCase().trim() === oldLower ? newName : f)));
 
@@ -3151,6 +3159,18 @@ function updateFavoriteName(oldName, newName) {
   const trimmed = newName.trim();
   if (!trimmed) return;
   const lowerOld = oldName.toLowerCase().trim();
+  const lowerNew = trimmed.toLowerCase().trim();
+
+  // Bild beim Umbenennen eines Favoriten direkt mitübertragen
+  if (state.savedImages) {
+    if (state.savedImages[lowerOld]) {
+      state.savedImages[lowerNew] = state.savedImages[lowerOld];
+      delete state.savedImages[lowerOld];
+    } else if (state.savedImages[oldName]) {
+      state.savedImages[trimmed] = state.savedImages[oldName];
+      delete state.savedImages[oldName];
+    }
+  }
   
   state.favorites = state.favorites.map(f => {
     const fKey = (typeof f === 'string' ? f : (f.name || f)).toLowerCase().trim();
