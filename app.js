@@ -1,4 +1,4 @@
-// app.js - Komplettversion (Echte Bild-Mitnahme beim Umbenennen von Artikeln)
+// app.js - Komplettversion (Eigene Barcode- & Foto-Datenbank zum manuellen Benennen)
 
 function getGroqApiKey() {
   let key = localStorage.getItem('dino_groq_api_key_v1');
@@ -674,7 +674,6 @@ function persistProduct(p, oldName = null) {
     if (state.savedPrices[oldName]) { state.savedPrices[newName] = state.savedPrices[oldName]; delete state.savedPrices[oldName]; }
     if (state.savedDeposits[oldName]) { state.savedDeposits[newName] = state.savedDeposits[oldName]; delete state.savedDeposits[oldName]; }
 
-    // BILD AKTIV MITNEHMEN BEIM UMBENENNEN (DIREKT SPIEGELN)
     if (state.savedImages) {
       let foundImgKey = null;
       for (let key of Object.keys(state.savedImages)) {
@@ -2385,13 +2384,13 @@ function render() {
             <div class="flex justify-between items-center pb-2 border-b border-stone-100 dark:border-stone-800">
               <div class="flex items-center gap-1.5">
                 <span class="text-base">📷</span>
-                <h3 class="font-extrabold text-sm">Artikel gescannt</h3>
+                <h3 class="font-extrabold text-sm">Artikel gescannt (Eigenes Foto / Barcode)</h3>
               </div>
               <button onclick="state.showScanIntentModal=false; render();" class="text-stone-400 hover:text-stone-700 font-bold">✕</button>
             </div>
 
             <div class="space-y-1">
-              <label class="text-[10px] font-bold text-stone-400 uppercase block">Produktname anpassen:</label>
+              <label class="text-[10px] font-bold text-stone-400 uppercase block">Wie soll dieses Produkt heißen? (Dein Name):</label>
               <input type="text" id="scan-modal-name-input" value="${scannedInfo.finalName || ''}" class="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 rounded-xl px-3 py-2 text-xs font-bold shadow-xs focus:outline-none focus:border-red-600" />
             </div>
 
@@ -2406,14 +2405,14 @@ function render() {
               </div>
             </div>
 
-            <p class="text-xs text-stone-600 dark:text-stone-400 font-medium pt-1">Was möchtest du mit diesem Artikel tun?</p>
+            <p class="text-xs text-stone-600 dark:text-stone-400 font-medium pt-1">Speichert Barcode & Name fest zusammen ab!</p>
 
             <div class="space-y-2 pt-1">
               <button onclick="executeScanIntent('cart')" class="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs rounded-2xl shadow-xs flex items-center justify-center gap-2">
                 <span>🛒 Direkt in den Einkaufswagen</span>
               </button>
               <button onclick="executeScanIntent('db')" class="w-full py-3 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 font-extrabold text-xs rounded-2xl border border-stone-200 dark:border-stone-700 shadow-xs flex items-center justify-center gap-2">
-                <span>🗄️ Nur für die Datenbank merken</span>
+                <span>🗄️ In eigener Scan-Datenbank merken</span>
               </button>
             </div>
           </div>
@@ -2575,10 +2574,10 @@ function render() {
         <div class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
           <div class="bg-white dark:bg-[#1a1a1a] border border-stone-200 dark:border-stone-800 rounded-3xl max-w-sm w-full p-4 shadow-2xl space-y-3 text-stone-900 dark:text-stone-100">
             <div class="flex justify-between items-center pb-2 border-b border-stone-100 dark:border-stone-800">
-              <div class="flex items-center gap-1.5"><span class="text-base">📷</span><h3 class="font-extrabold text-sm">Barcode scannen</h3></div>
+              <div class="flex items-center gap-1.5"><span class="text-base">📷</span><h3 class="font-extrabold text-sm">Barcode scannen & benennen</h3></div>
               <button onclick="closeBarcodeScannerModal();" class="text-stone-400 hover:text-stone-700 font-bold">✕</button>
             </div>
-            <p class="text-xs text-stone-500 font-medium">Halte den Strichcode vor die Kamera deines Handys:</p>
+            <p class="text-xs text-stone-500 font-medium">Halte den Strichcode vor die Kamera. Wenn er nicht bekannt ist, kannst du ihn sofort selbst benennen!</p>
             
             <div id="reader" class="w-full overflow-hidden rounded-2xl bg-black min-h-[250px]"></div>
 
@@ -3067,7 +3066,6 @@ function saveEditItemModal(id) {
   const newName = nameInp ? nameInp.value.trim() : item.name;
   if (!newName) return;
 
-  // BILD BEIM BEARBEITEN/UMBENENNEN DIREKT ÜBERTRAGEN
   if (state.savedImages) {
     const oldLower = oldName.toLowerCase().trim();
     const newLower = newName.toLowerCase().trim();
@@ -3311,7 +3309,7 @@ function startScannerCamera() {
       html5QrCode = null;
       state.showScannerModal = false;
       
-      showToast(`Barcode erkannt: ${barcode}. Prüfe Datenbank... 🔍`);
+      showToast(`Barcode erkannt: ${barcode}. Prüfe eigene Scan-Datenbank... 🔍`);
       fetchProductByBarcode(barcode);
     },
     (errorMessage) => {}
@@ -3324,7 +3322,7 @@ async function fetchProductByBarcode(barcode) {
   try {
     if (state.savedBarcodes && state.savedBarcodes[barcode]) {
       const rememberedName = state.savedBarcodes[barcode];
-      showToast(`✨ Bekannter Barcode! Erkannt als: "${rememberedName}"`);
+      showToast(`✨ Gespeicherter Barcode! Erkannt als: "${rememberedName}"`);
       handleScannedProductNameResolved(rememberedName, barcode);
       return;
     }
@@ -3375,7 +3373,7 @@ async function fetchProductByBarcode(barcode) {
 }
 
 function promptUnknownBarcode(barcode, defaultName) {
-  const customName = prompt(`Barcode ${barcode} nicht in weltweiter Datenbank gefunden. Wie heißt das Produkt?`, defaultName);
+  const customName = prompt(`Barcode ${barcode} ist nicht hinterlegt. Wie möchtest du diesen Artikel nennen?`, defaultName);
   if (customName && customName.trim()) {
     handleScannedProductNameResolved(customName.trim(), barcode);
   }
@@ -3389,7 +3387,7 @@ function assignBarcodeToExistingProduct(chosenName) {
 
 function assignBarcodeAsNewProduct() {
   const raw = state.scannedBarcodeData ? state.scannedBarcodeData.rawName : 'Neues Produkt';
-  const customName = prompt("Wie soll dieser Artikel in deiner Datenbank heißen?", raw);
+  const customName = prompt("Wie soll dieser Artikel in deiner eigenen Scan-Datenbank heißen?", raw);
   state.showBarcodeMatchModal = false;
   if (customName && customName.trim()) {
     const barcode = state.scannedBarcodeData ? state.scannedBarcodeData.barcode : null;
@@ -3423,13 +3421,16 @@ function executeScanIntent(intent) {
   const enteredDeposit = depositInput && depositInput.value.trim() !== '' ? parseFloat(depositInput.value) : 0;
 
   if (!finalName) {
-    state.showScanIntentModal.false;
+    state.showScanIntentModal = false;
     render();
     return;
   }
 
   if (barcode) {
     state.savedBarcodes[barcode] = finalName;
+    if (!state.savedImages[finalName]) {
+      state.savedImages[finalName] = getOpenFoodFactsImageUrl(barcode);
+    }
   }
 
   if (enteredPrice !== null && !isNaN(enteredPrice)) {
@@ -3451,9 +3452,9 @@ function executeScanIntent(intent) {
       defaultPrice: enteredPrice !== null && !isNaN(enteredPrice) ? enteredPrice : undefined,
       depositAmount: !isNaN(enteredDeposit) ? enteredDeposit : undefined
     }, 1);
-    showToast(`🛒 "${finalName}" (${enteredPrice !== null ? enteredPrice.toFixed(2) + ' €' : ''}) zur Einkaufsliste hinzugefügt!`);
+    showToast(`🛒 "${finalName}" erfolgreich gescannt & zur Liste hinzugefügt!`);
   } else {
-    showToast(`🗄️ "${finalName}" in Produktdatenbank gespeichert!`);
+    showToast(`🗄️ "${finalName}" fest in deiner Scan-Datenbank gespeichert!`);
   }
 
   state.showScanIntentModal = false;
