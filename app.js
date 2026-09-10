@@ -1357,24 +1357,25 @@ function renderDropdownItem(p, marketKey) {
   const imgUrl = getItemImageForName(p.name);
   
   return `
-    <div class="p-3 hover:bg-stone-50 dark:hover:bg-stone-800/60 flex items-center justify-between gap-3 border-b border-stone-100 dark:border-stone-800/80 last:border-0 text-xs">
-      <div class="flex items-center gap-3 min-w-0 flex-1">
-        ${imgUrl ? `<img src="${imgUrl}" class="w-12 h-12 object-cover rounded-xl shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" /><div class="w-12 h-12 rounded-xl bg-stone-100 dark:bg-stone-800 items-center justify-center text-xs shrink-0 border border-stone-200 dark:border-stone-700" style="display:none;">🛒</div>` : `<div class="w-12 h-12 rounded-xl bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-xs shrink-0 border border-stone-200 dark:border-stone-700">🛒</div>`}
-        <div class="min-w-0 flex-1">
-          <span class="font-bold text-stone-900 dark:text-stone-100 leading-snug block break-words">${p.name}</span>
+    <div class="p-3 hover:bg-stone-50 dark:hover:bg-stone-800/60 flex items-center justify-between gap-2 border-b border-stone-100 dark:border-stone-800/80 last:border-0 text-xs">
+      <div class="flex items-center gap-2.5 flex-1 min-w-0">
+        ${imgUrl ? `<img src="${imgUrl}" class="w-10 h-10 object-cover rounded-xl shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" /><div class="w-10 h-10 rounded-xl bg-stone-100 dark:bg-stone-800 items-center justify-center text-xs shrink-0 border border-stone-200 dark:border-stone-700" style="display:none;">🛒</div>` : `<div class="w-10 h-10 rounded-xl bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-xs shrink-0 border border-stone-200 dark:border-stone-700">🛒</div>`}
+        <div class="flex-1 min-w-0">
+          <span class="font-bold text-stone-900 dark:text-stone-100 leading-tight block break-words">${p.name}</span>
           <span class="text-[10px] text-stone-500 block truncate">${aDef ? aDef.name : `Gang ${aNum}`} • ${pPrice.toFixed(2)}€</span>
         </div>
       </div>
-      <div class="flex items-center gap-1.5 shrink-0" onclick="event.stopPropagation();">
-        <select id="vpe-in-${p.id}" class="bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 rounded-lg px-1.5 py-1 text-[10px] font-semibold">
+      <div class="flex items-center gap-1 shrink-0" onclick="event.stopPropagation();">
+        <select id="vpe-in-${p.id}" class="bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 rounded-lg px-1 py-1 text-[10px] font-semibold">
           ${COMMON_UNITS.map(u => `<option value="${u}" ${u===defaultShopUnit?'selected':''}>${u}</option>`).join('')}
         </select>
         <button onclick="event.stopPropagation(); toggleFavorite('${p.name.replace(/'/g, "\\'")}');" class="p-1 text-sm ${isFav?'text-amber-400 font-black':'text-stone-300 dark:text-stone-600'}">${isFav?'★':'☆'}</button>
-        <button onclick="event.stopPropagation(); const cu=document.getElementById('vpe-in-${p.id}').value; persistProduct({ name: '${p.name.replace(/'/g, "\\'")}', shopUnit: cu, aisleNumber: ${aNum} }); addItem({ name: '${p.name.replace(/'/g, "\\'")}', shopUnit: cu, defaultPrice: ${pPrice}, depositAmount: ${pDep}, aisleNumber: ${aNum} }, 1, cu); render();" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-2.5 py-1.5 rounded-xl shadow-xs">+ Liste</button>
+        <button onclick="event.stopPropagation(); const cu=document.getElementById('vpe-in-${p.id}').value; persistProduct({ name: '${p.name.replace(/'/g, "\\'")}', shopUnit: cu, aisleNumber: ${aNum} }); addItem({ name: '${p.name.replace(/'/g, "\\'")}', shopUnit: cu, defaultPrice: ${pPrice}, depositAmount: ${pDep}, aisleNumber: ${aNum} }, 1, cu); render();" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-2 py-1.5 rounded-xl shadow-xs">+ Liste</button>
       </div>
     </div>
   `;
 }
+
 
 function buildAppContextPrompt() {
   const curList = state.lists.find(l => l.id === state.activeListId) || state.lists[0];
