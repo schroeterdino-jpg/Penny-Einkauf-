@@ -1,4 +1,4 @@
-// app.js - Dropdown-Breite korrigiert (keine vertikalen Buchstaben mehr)
+// app.js - Dropdown-Breite korrigiert & Galerie-Upload aktiviert
 
 function getGroqApiKey() {
   let key = localStorage.getItem('dino_groq_api_key_v1');
@@ -2388,7 +2388,7 @@ function render() {
             <div class="flex justify-between items-center pb-2 border-b border-stone-100 dark:border-stone-800">
               <div class="flex items-center gap-1.5">
                 <span class="text-base">📷</span>
-                <h3 class="font-extrabold text-sm">Artikel benennen & Foto aufnehmen</h3>
+                <h3 class="font-extrabold text-sm">Artikel benennen & Foto auswählen</h3>
               </div>
               <button onclick="state.showScanIntentModal=false; render();" class="text-stone-400 hover:text-stone-700 font-bold">✕</button>
             </div>
@@ -2397,9 +2397,10 @@ function render() {
               <div id="scan-photo-preview-container" class="w-24 h-24 rounded-2xl bg-stone-100 dark:bg-stone-800 border-2 border-dashed border-stone-300 dark:border-stone-700 flex items-center justify-center overflow-hidden shadow-xs relative">
                 ${currentImage ? `<img src="${currentImage}" class="w-full h-full object-cover" />` : `<span class="text-2xl">📸</span>`}
               </div>
+              <!-- KORREKTUR: capture="environment" entfernt, damit Galerie-Auswahl möglich ist -->
               <label class="px-3 py-1.5 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 text-xs font-bold rounded-xl cursor-pointer border border-stone-200 dark:border-stone-700 shadow-xs flex items-center gap-1.5">
-                <span>Foto mit Kamera machen / hochladen</span>
-                <input type="file" accept="image/*" capture="environment" onchange="handleScanPhotoCapture(this)" class="hidden" />
+                <span>Foto aus Galerie / Kamera wählen</span>
+                <input type="file" accept="image/*" onchange="handleScanPhotoCapture(this)" class="hidden" />
               </label>
             </div>
 
@@ -2832,7 +2833,7 @@ function render() {
             </div>
             <div class="grid grid-cols-2 gap-2">
               <div><label class="text-[10px] font-bold text-red-600 dark:text-red-400 block mb-1">Anzahl Packungen kaufen</label><input type="number" id="edit-pantry-buyqty" min="1" value="${item.buyQty||1}" class="w-full bg-red-50 dark:bg-red-950/40 border border-red-200 text-red-600 rounded-xl px-2.5 py-1.5 text-xs font-bold shadow-xs" /></div>
-              <div><label class="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 block mb-1">Inhalt pro Packung</label><input type="number" id="edit-pantry-perpack" min="1" value="${item.itemsPerPack||10}" class="w-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 text-emerald-800 rounded-xl px-2.5 py-1.5 text-xs font-bold shadow-xs" /></div>
+              <div><label class="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 block mb-1">Inhalt pro Packung</label><input type="number" id="edit-pantry-perpack" min="1" value="${item.itemsPerPack||1}" class="w-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 text-emerald-800 rounded-xl px-2.5 py-1.5 text-xs font-bold shadow-xs" /></div>
             </div>
             <div><label class="text-[10px] font-bold text-stone-700 dark:text-stone-300 block mb-1">Verbrauch / Tag (Fest)</label><input type="number" step="0.1" id="edit-pantry-daily" value="${item.dailyConsumption||3}" class="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 rounded-xl px-2.5 py-1.5 text-xs font-bold shadow-xs" /></div>
             
@@ -2882,9 +2883,10 @@ function render() {
               <div id="edit-item-photo-preview-container" class="w-20 h-20 rounded-2xl bg-stone-100 dark:bg-stone-800 border-2 border-dashed border-stone-300 dark:border-stone-700 flex items-center justify-center overflow-hidden shadow-xs relative">
                 ${currentItemImage ? `<img src="${currentItemImage}" class="w-full h-full object-cover" />` : `<span class="text-xl">📸</span>`}
               </div>
+              <!-- KORREKTUR: capture="environment" entfernt, damit Galerie-Auswahl möglich ist -->
               <label class="px-3 py-1.5 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 text-[11px] font-bold rounded-xl cursor-pointer border border-stone-200 dark:border-stone-700 shadow-xs flex items-center gap-1.5">
-                <span>Produktfoto aufnehmen / ändern</span>
-                <input type="file" accept="image/*" capture="environment" onchange="handleEditItemPhotoCapture(this, '${item.name.replace(/'/g, "\\'")}')" class="hidden" />
+                <span>Produktfoto aus Galerie / Kamera wählen</span>
+                <input type="file" accept="image/*" onchange="handleEditItemPhotoCapture(this, '${item.name.replace(/'/g, "\\'")}')" class="hidden" />
               </label>
             </div>
 
