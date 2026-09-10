@@ -39,15 +39,29 @@ function getOpenFoodFactsImageUrl(barcodeOrName) {
 function getItemImageForName(itemName) {
   if (!itemName) return '';
   let foundUrl = '';
+  const searchName = itemName.toLowerCase().trim();
   
-  // 1. Suche über gespeicherte Barcodes / Produktnamen
+  // 1. Suche direkt in state.savedImages, falls dort der Produktname als Schlüssel hinterlegt ist
+  if (state.savedImages) {
+    if (state.savedImages[searchName]) {
+      return state.savedImages[searchName];
+    }
+  }
+
+  // 2. Suche über gespeicherte Barcodes / Produktnamen
   if (state.savedBarcodes) {
     Object.keys(state.savedBarcodes).forEach(bc => {
-      if (state.savedBarcodes[bc] && state.savedBarcodes[bc].toLowerCase().trim() === itemName.toLowerCase().trim()) {
-        foundUrl = getOpenFoodFactsImageUrl(bc);
+      if (state.savedBarcodes[bc] && state.savedBarcodes[bc].toLowerCase().trim() === searchName) {
+        // Prüfen, ob wir für diesen Barcode direkt ein Bild in savedImages haben
+        if (state.savedImages && state.savedImages[bc]) {
+          foundUrl = state.savedImages[bc];
+        } else {
+          foundUrl = getOpenFoodFactsImageUrl(bc);
+        }
       }
     });
   }
+  
   return foundUrl;
 }
 
