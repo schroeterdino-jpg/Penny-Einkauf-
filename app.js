@@ -1,4 +1,4 @@
-// app.js - Komplettversion inklusive Open Food Facts Bild-Integration über Barcodes
+// app.js - Komplettversion inklusive robuster Open Food Facts Bild-Integration über Barcodes
 
 function getGroqApiKey() {
   let key = localStorage.getItem('dino_groq_api_key_v1');
@@ -14,11 +14,16 @@ function getGroqApiKey() {
 let recognition = null;
 let isListening = false;
 
-// Korrigierte Open Food Facts Bild-URL Generator basierend auf offizieller Spezifikation (Die ersten 9 Ziffern in 3er Gruppen + Rest)
+// Robuster Open Food Facts Bild-URL Generator mit Fallback auf direktes API-Bild oder universelles front.jpg
 function getOpenFoodFactsImageUrl(barcodeOrName) {
   if (!barcodeOrName) return '';
   let b = String(barcodeOrName).trim();
+  
+  // Wenn direkt ein Barcode übergeben wurde und ein gespeichertes API-Bild existiert, dieses bevorzugen
   if (/^\d{8,14}$/.test(b)) {
+    if (state.savedImages && state.savedImages[b]) {
+      return state.savedImages[b];
+    }
     while (b.length < 13) {
       b = '0' + b;
     }
@@ -26,7 +31,7 @@ function getOpenFoodFactsImageUrl(barcodeOrName) {
     let p2 = b.slice(3, 6);
     let p3 = b.slice(6, 9);
     let p4 = b.slice(9);
-    return `https://images.openfoodfacts.org/images/products/${p1}/${p2}/${p3}/${p4}/front_de.400.jpg`;
+    return `https://images.openfoodfacts.org/images/products/${p1}/${p2}/${p3}/${p4}/front.jpg`;
   }
   return '';
 }
@@ -34,11 +39,15 @@ function getOpenFoodFactsImageUrl(barcodeOrName) {
 function getItemImageForName(itemName) {
   if (!itemName) return '';
   let foundUrl = '';
-  Object.keys(state.savedBarcodes || {}).forEach(bc => {
-    if (state.savedBarcodes[bc] && state.savedBarcodes[bc].toLowerCase().trim() === itemName.toLowerCase().trim()) {
-      foundUrl = getOpenFoodFactsImageUrl(bc);
-    }
-  });
+  
+  // 1. Suche über gespeicherte Barcodes / Produktnamen
+  if (state.savedBarcodes) {
+    Object.keys(state.savedBarcodes).forEach(bc => {
+      if (state.savedBarcodes[bc] && state.savedBarcodes[bc].toLowerCase().trim() === itemName.toLowerCase().trim()) {
+        foundUrl = getOpenFoodFactsImageUrl(bc);
+      }
+    });
+  }
   return foundUrl;
 }
 
@@ -349,7 +358,8 @@ let state = {
   showBarcodeMatchModal: false,
   scannedBarcodeData: null,
   barcodeMatchCandidates: [],
-  savedBarcodes: {}
+  savedBarcodes: {},
+  savedImages: {}
 };
 
 async function saveState() {
@@ -367,6 +377,7 @@ async function loadAppState() {
     if (savedState) {
       state = Object.assign(state, savedState);
       if (!state.savedBarcodes) state.savedBarcodes = {};
+      if (!state.savedImages) state.savedImages = {};
     } else {
       try {
         const oldItems = localStorage.getItem('penny_items_v124');
@@ -721,7 +732,8 @@ function exportAppDataSafe() {
     customMarketAisles: state.customMarketAisles,
     marketOverrides: state.marketOverrides,
     purchaseHistory: state.purchaseHistory,
-    savedBarcodes: state.savedBarcodes
+    savedBarcodes: state.savedBarcodes,
+    savedImages: state.savedImages
   };
   state.exportTextContent = JSON.stringify(backupData, null, 2);
   state.showExportModal = true;
@@ -750,6 +762,7 @@ function importAppDataText() {
       state.marketOverrides = parsed.marketOverrides || {};
       state.purchaseHistory = parsed.purchaseHistory || [];
       state.savedBarcodes = parsed.savedBarcodes || {};
+      state.savedImages = parsed.savedImages || {};
       saveState();
       soundComplete();
       showToast("Backup erfolgreich eingespielt! 🎉");
@@ -3267,6 +3280,13 @@ async function fetchProductByBarcode(barcode) {
     if (data.status === 1 && data.product) {
       const rawApiName = (data.product.product_name || data.product.brands || `Produkt ${barcode}`).trim();
       
+      // Direkt die offizielle Bild-URL von der API abspeichern, falls vorhanden!
+      const apiImageUrl = data.product.image_front_url || data.product.image_url || '';
+      if (apiImageUrl) {
+        if (!state.savedImages) state.savedImages = {};
+        state.savedImages[barcode] = apiImageUrl;
+      }
+
       const catalog = getCatalog();
       const lowerApiName = rawApiName.toLowerCase();
       const queryWords = lowerApiName.split(/\s+/).filter(w => w.length > 2);
