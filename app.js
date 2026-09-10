@@ -1,4 +1,4 @@
-// app.js - Mit echtem Foto-Upload & Kamera-Schnappschuss beim Barcode-Scannen
+// app.js - Mit echtem Foto-Upload & Kamera-Schnappschuss beim Barcode-Scanners
 
 function getGroqApiKey() {
   let key = localStorage.getItem('dino_groq_api_key_v1');
@@ -1357,11 +1357,11 @@ function renderDropdownItem(p, marketKey) {
   const imgUrl = getItemImageForName(p.name);
   
   return `
-    <div class="p-2.5 hover:bg-stone-50 dark:hover:bg-stone-800/60 flex items-center justify-between gap-2 border-b border-stone-100 dark:border-stone-800/80 last:border-0 text-xs">
-      <div class="flex items-center gap-2.5 min-w-0 flex-1">
+    <div class="p-3 hover:bg-stone-50 dark:hover:bg-stone-800/60 flex items-center justify-between gap-3 border-b border-stone-100 dark:border-stone-800/80 last:border-0 text-xs">
+      <div class="flex items-center gap-3 min-w-0 flex-1">
         ${imgUrl ? `<img src="${imgUrl}" class="w-12 h-12 object-cover rounded-xl shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" /><div class="w-12 h-12 rounded-xl bg-stone-100 dark:bg-stone-800 items-center justify-center text-xs shrink-0 border border-stone-200 dark:border-stone-700" style="display:none;">🛒</div>` : `<div class="w-12 h-12 rounded-xl bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-xs shrink-0 border border-stone-200 dark:border-stone-700">🛒</div>`}
-        <div class="min-w-0 flex-1 pr-1">
-          <span class="font-bold text-stone-900 dark:text-stone-100 leading-snug break-words block">${p.name}</span>
+        <div class="min-w-0 flex-1">
+          <span class="font-bold text-stone-900 dark:text-stone-100 leading-snug block break-words">${p.name}</span>
           <span class="text-[10px] text-stone-500 block truncate">${aDef ? aDef.name : `Gang ${aNum}`} • ${pPrice.toFixed(2)}€</span>
         </div>
       </div>
@@ -3415,25 +3415,55 @@ function handleScannedProductNameResolved(finalName, barcode) {
 
 function handleScanPhotoCapture(inputElement) {
   if (inputElement.files && inputElement.files[0]) {
+    const file = inputElement.files[0];
     const reader = new FileReader();
+    
     reader.onload = function(e) {
-      const base64Image = e.target.result;
-      const scanned = state.scannedBarcodeData || {};
-      const currentName = document.getElementById('scan-modal-name-input')?.value || scanned.finalName || 'Produkt';
-      
-      if (!state.savedImages) state.savedImages = {};
-      state.savedImages[currentName.toLowerCase().trim()] = base64Image;
-      if (scanned.barcode) {
-        state.savedImages[scanned.barcode] = base64Image;
-      }
+      const img = new Image();
+      img.onload = function() {
+        const canvas = document.createElement('canvas');
+        const MAX_SIZE = 600;
+        let width = img.width;
+        let height = img.height;
+        
+        if (width > height) {
+          if (width > MAX_SIZE) {
+            height *= MAX_SIZE / width;
+            width = MAX_SIZE;
+          }
+        } else {
+          if (height > MAX_SIZE) {
+            width *= MAX_SIZE / height;
+            height = MAX_SIZE;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        const base64Image = canvas.toDataURL('image/jpeg', 0.8);
+        
+        const scanned = state.scannedBarcodeData || {};
+        const currentName = document.getElementById('scan-modal-name-input')?.value || scanned.finalName || 'Produkt';
+        
+        if (!state.savedImages) state.savedImages = {};
+        state.savedImages[currentName.toLowerCase().trim()] = base64Image;
+        if (scanned.barcode) {
+          state.savedImages[scanned.barcode] = base64Image;
+        }
 
-      const previewContainer = document.getElementById('scan-photo-preview-container');
-      if (previewContainer) {
-        previewContainer.innerHTML = `<img src="${base64Image}" class="w-full h-full object-cover" />`;
-      }
-      showToast('Foto erfolgreich aufgenommen! 📸');
+        const previewContainer = document.getElementById('scan-photo-preview-container');
+        if (previewContainer) {
+          previewContainer.innerHTML = `<img src="${base64Image}" class="w-full h-full object-cover" />`;
+        }
+        showToast('Foto optimiert & aufgenommen! 📸');
+        saveState();
+      };
+      img.src = e.target.result;
     };
-    reader.readAsDataURL(inputElement.files[0]);
+    reader.readAsDataURL(file);
   }
 }
 
