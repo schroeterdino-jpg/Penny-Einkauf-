@@ -1,4 +1,4 @@
-// app.js - Komplettversion (Eigene Barcode- & Foto-Datenbank zum manuellen Benennen)
+// app.js - Mit echtem Foto-Upload & Kamera-Schnappschuss beim Barcode-Scannen
 
 function getGroqApiKey() {
   let key = localStorage.getItem('dino_groq_api_key_v1');
@@ -370,6 +370,7 @@ let state = {
   showExportModal: false, exportTextContent: '',
   showVoiceDisambiguationModal: false, voiceDisambiguationMatches: [],
   showBarcodeMatchModal: false,
+  showScanIntentModal: false,
   scannedBarcodeData: null,
   barcodeMatchCandidates: [],
   savedBarcodes: {},
@@ -2377,20 +2378,31 @@ function render() {
       const scannedInfo = state.scannedBarcodeData || {};
       const currentDefaultPrice = getBaseUnitPrice(scannedInfo.finalName, 0);
       const currentDeposit = getBaseUnitDeposit(scannedInfo.finalName, 0);
+      const currentImage = (state.savedImages && state.savedImages[scannedInfo.finalName]) ? state.savedImages[scannedInfo.finalName] : '';
 
       html += `
         <div class="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
-          <div class="bg-white dark:bg-[#1a1a1a] border border-stone-200 dark:border-stone-800 rounded-3xl max-w-sm w-full p-4 shadow-2xl space-y-3 text-stone-900 dark:text-stone-100">
+          <div class="bg-white dark:bg-[#1a1a1a] border border-stone-200 dark:border-stone-800 rounded-3xl max-w-sm w-full p-4 shadow-2xl space-y-3 text-stone-900 dark:text-stone-100 max-h-[90vh] overflow-y-auto custom-scrollbar">
             <div class="flex justify-between items-center pb-2 border-b border-stone-100 dark:border-stone-800">
               <div class="flex items-center gap-1.5">
                 <span class="text-base">📷</span>
-                <h3 class="font-extrabold text-sm">Artikel gescannt (Eigenes Foto / Barcode)</h3>
+                <h3 class="font-extrabold text-sm">Artikel benennen & Foto aufnehmen</h3>
               </div>
               <button onclick="state.showScanIntentModal=false; render();" class="text-stone-400 hover:text-stone-700 font-bold">✕</button>
             </div>
 
+            <div class="flex flex-col items-center justify-center space-y-2">
+              <div id="scan-photo-preview-container" class="w-24 h-24 rounded-2xl bg-stone-100 dark:bg-stone-800 border-2 border-dashed border-stone-300 dark:border-stone-700 flex items-center justify-center overflow-hidden shadow-xs relative">
+                ${currentImage ? `<img src="${currentImage}" class="w-full h-full object-cover" />` : `<span class="text-2xl">📸</span>`}
+              </div>
+              <label class="px-3 py-1.5 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 text-xs font-bold rounded-xl cursor-pointer border border-stone-200 dark:border-stone-700 shadow-xs flex items-center gap-1.5">
+                <span>Foto mit Kamera machen / hochladen</span>
+                <input type="file" accept="image/*" capture="environment" onchange="handleScanPhotoCapture(this)" class="hidden" />
+              </label>
+            </div>
+
             <div class="space-y-1">
-              <label class="text-[10px] font-bold text-stone-400 uppercase block">Wie soll dieses Produkt heißen? (Dein Name):</label>
+              <label class="text-[10px] font-bold text-stone-400 uppercase block">Wie soll dieses Produkt heißen?</label>
               <input type="text" id="scan-modal-name-input" value="${scannedInfo.finalName || ''}" class="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 rounded-xl px-3 py-2 text-xs font-bold shadow-xs focus:outline-none focus:border-red-600" />
             </div>
 
@@ -2405,9 +2417,7 @@ function render() {
               </div>
             </div>
 
-            <p class="text-xs text-stone-600 dark:text-stone-400 font-medium pt-1">Speichert Barcode & Name fest zusammen ab!</p>
-
-            <div class="space-y-2 pt-1">
+            <div class="space-y-2 pt-2">
               <button onclick="executeScanIntent('cart')" class="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs rounded-2xl shadow-xs flex items-center justify-center gap-2">
                 <span>🛒 Direkt in den Einkaufswagen</span>
               </button>
@@ -3256,7 +3266,7 @@ function moveAisle(index, direction) {
 function generateWhatsAppMessage() {
   const curList = state.lists.find(l => l.id === state.activeListId) || state.lists[0];
   const curItems = state.items.filter(i => (i.listId || 'list-penny') === state.activeListId);
-  openItems = curItems.filter(i => !i.isChecked);
+  let openItems = curItems.filter(i => !i.isChecked);
   
   if (openItems.length === 0) return `🛒 Meine Einkaufsliste (${curList.name}) ist aktuell leer!`;
 
@@ -3340,9 +3350,10 @@ async function fetchProductByBarcode(barcode) {
       const rawApiName = (data.product.product_name || data.product.brands || `Produkt ${barcode}`).trim();
       
       const apiImageUrl = data.product.image_front_url || data.product.image_url || '';
-      if (apiImageUrl) {
+      if (apiImageUrl && !state.savedImages[rawApiName]) {
         if (!state.savedImages) state.savedImages = {};
         state.savedImages[barcode] = apiImageUrl;
+        state.savedImages[rawApiName.toLowerCase().trim()] = apiImageUrl;
       }
 
       const catalog = getCatalog();
@@ -3402,6 +3413,30 @@ function handleScannedProductNameResolved(finalName, barcode) {
   render();
 }
 
+function handleScanPhotoCapture(inputElement) {
+  if (inputElement.files && inputElement.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const base64Image = e.target.result;
+      const scanned = state.scannedBarcodeData || {};
+      const currentName = document.getElementById('scan-modal-name-input')?.value || scanned.finalName || 'Produkt';
+      
+      if (!state.savedImages) state.savedImages = {};
+      state.savedImages[currentName.toLowerCase().trim()] = base64Image;
+      if (scanned.barcode) {
+        state.savedImages[scanned.barcode] = base64Image;
+      }
+
+      const previewContainer = document.getElementById('scan-photo-preview-container');
+      if (previewContainer) {
+        previewContainer.innerHTML = `<img src="${base64Image}" class="w-full h-full object-cover" />`;
+      }
+      showToast('Foto erfolgreich aufgenommen! 📸');
+    };
+    reader.readAsDataURL(inputElement.files[0]);
+  }
+}
+
 function executeScanIntent(intent) {
   const scanned = state.scannedBarcodeData;
   if (!scanned) {
@@ -3428,9 +3463,6 @@ function executeScanIntent(intent) {
 
   if (barcode) {
     state.savedBarcodes[barcode] = finalName;
-    if (!state.savedImages[finalName]) {
-      state.savedImages[finalName] = getOpenFoodFactsImageUrl(barcode);
-    }
   }
 
   if (enteredPrice !== null && !isNaN(enteredPrice)) {
