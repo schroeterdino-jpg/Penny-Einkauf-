@@ -1,4 +1,4 @@
-// app.js - Komplettversion (inklusive Bild-Mitnahme beim Umbenennen von Artikeln)
+// app.js - Komplettversion (Robuste Bild-Mitnahme für eigene Begriffe beim Umbenennen)
 
 function getGroqApiKey() {
   let key = localStorage.getItem('dino_groq_api_key_v1');
@@ -39,12 +39,20 @@ function getItemImageForName(itemName) {
   let foundUrl = '';
   const searchName = itemName.toLowerCase().trim();
   
+  // 1. Direkter Treffer im Bild-Speicher (egal ob Barcode oder direkt der Name)
   if (state.savedImages) {
     if (state.savedImages[searchName]) {
       return state.savedImages[searchName];
     }
+    // Fallback: Suche case-insensitive im savedImages Objekt
+    for (let key of Object.keys(state.savedImages)) {
+      if (key.toLowerCase().trim() === searchName) {
+        return state.savedImages[key];
+      }
+    }
   }
 
+  // 2. Über verknüpfte Barcodes suchen
   if (state.savedBarcodes) {
     Object.keys(state.savedBarcodes).forEach(bc => {
       if (state.savedBarcodes[bc] && state.savedBarcodes[bc].toLowerCase().trim() === searchName) {
@@ -669,13 +677,19 @@ function persistProduct(p, oldName = null) {
     if (state.savedPrices[oldName]) { state.savedPrices[newName] = state.savedPrices[oldName]; delete state.savedPrices[oldName]; }
     if (state.savedDeposits[oldName]) { state.savedDeposits[newName] = state.savedDeposits[oldName]; delete state.savedDeposits[oldName]; }
 
-    // WICHTIG: Bildverknüpfung beim Umbenennen mitnehmen!
-    if (state.savedImages && state.savedImages[oldLower]) {
-      state.savedImages[newLower] = state.savedImages[oldLower];
-      delete state.savedImages[oldLower];
-    } else if (state.savedImages && state.savedImages[oldName]) {
-      state.savedImages[newName] = state.savedImages[oldName];
-      delete state.savedImages[oldName];
+    // WICHTIG: Bildverknüpfung beim Umbenennen (egal ob alt oder neu) absolut sicher mitnehmen!
+    if (state.savedImages) {
+      let foundImgKey = null;
+      for (let key of Object.keys(state.savedImages)) {
+        if (key.toLowerCase().trim() === oldLower) {
+          foundImgKey = key;
+          break;
+        }
+      }
+      if (foundImgKey) {
+        state.savedImages[newLower] = state.savedImages[foundImgKey];
+        delete state.savedImages[foundImgKey];
+      }
     }
 
     state.favorites = cleanDuplicateList(state.favorites.map(f => (String(f).toLowerCase().trim() === oldLower ? newName : f)));
@@ -3163,12 +3177,16 @@ function updateFavoriteName(oldName, newName) {
 
   // Bild beim Umbenennen eines Favoriten direkt mitübertragen
   if (state.savedImages) {
-    if (state.savedImages[lowerOld]) {
-      state.savedImages[lowerNew] = state.savedImages[lowerOld];
-      delete state.savedImages[lowerOld];
-    } else if (state.savedImages[oldName]) {
-      state.savedImages[trimmed] = state.savedImages[oldName];
-      delete state.savedImages[oldName];
+    let foundKey = null;
+    for (let k of Object.keys(state.savedImages)) {
+      if (k.toLowerCase().trim() === lowerOld) {
+        foundKey = k;
+        break;
+      }
+    }
+    if (foundKey) {
+      state.savedImages[lowerNew] = state.savedImages[foundKey];
+      delete state.savedImages[foundKey];
     }
   }
   
@@ -3392,7 +3410,7 @@ function executeScanIntent(intent) {
   const enteredDeposit = depositInput && depositInput.value.trim() !== '' ? parseFloat(depositInput.value) : 0;
 
   if (!finalName) {
-    state.showScanIntentModal = false;
+    state.showScanIntentModal.false;
     render();
     return;
   }
