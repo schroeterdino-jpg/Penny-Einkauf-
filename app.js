@@ -14,18 +14,19 @@ function getGroqApiKey() {
 let recognition = null;
 let isListening = false;
 
-// Open Food Facts Bild-URL Generator basierend auf dem Barcode
+// Korrigierte Open Food Facts Bild-URL Generator basierend auf offizieller Spezifikation (Die ersten 9 Ziffern in 3er Gruppen + Rest)
 function getOpenFoodFactsImageUrl(barcodeOrName) {
   if (!barcodeOrName) return '';
-  if (/^\d{8,14}$/.test(barcodeOrName)) {
-    let b = barcodeOrName;
-    let path = b;
-    if (b.length === 13) {
-      path = `${b[0]}/${b[1]}${b[2]}/${b[3]}${b[4]}/${b.slice(5)}`;
-    } else if (b.length === 12) {
-      path = `0/${b[0]}${b[1]}/${b[2]}${b[3]}/${b.slice(4)}`;
+  let b = String(barcodeOrName).trim();
+  if (/^\d{8,14}$/.test(b)) {
+    while (b.length < 13) {
+      b = '0' + b;
     }
-    return `https://images.openfoodfacts.org/images/products/${path}/front_de.400.jpg`;
+    let p1 = b.slice(0, 3);
+    let p2 = b.slice(3, 6);
+    let p3 = b.slice(6, 9);
+    let p4 = b.slice(9);
+    return `https://images.openfoodfacts.org/images/products/${p1}/${p2}/${p3}/${p4}/front_de.400.jpg`;
   }
   return '';
 }
@@ -2079,7 +2080,7 @@ function render() {
               return `
                 <div class="bg-white dark:bg-[#1a1a1a] border border-stone-200 dark:border-stone-800 rounded-3xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-xs">
                   <div class="flex items-center gap-2.5 min-w-0 flex-1">
-                    ${imgUrl ? `<img src="${imgUrl}" class="w-9 h-9 object-cover rounded-xl shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" /><div class="w-9 h-9 rounded-xl bg-stone-100 dark:bg-stone-800 items-center justify-center text-xs shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs" style="display:none;">🛒</div>` : `<div class="w-9 h-9 rounded-xl bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-xs shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs">🛒</div>`}
+                    ${imgUrl ? `<img src="${imgUrl}" class="w-9 h-9 object-cover rounded-xl shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" /><div class="w-9 h-9 rounded-xl bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-xs shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs" style="display:none;">🛒</div>` : `<div class="w-9 h-9 rounded-xl bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-xs shrink-0 border border-stone-200 dark:border-stone-700 shadow-xs">🛒</div>`}
                     <div class="min-w-0 flex-1 space-y-1">
                       <div class="flex items-center gap-1.5">
                         <input type="text" value="${fav.name}" onchange="updateFavoriteName('${safeFavName}', this.value)" class="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 rounded-xl px-2.5 py-1 text-xs font-extrabold shadow-xs focus:outline-none focus:border-red-600" title="Tippen zum Umbenennen" />
