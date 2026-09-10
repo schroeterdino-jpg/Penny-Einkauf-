@@ -1,4 +1,4 @@
-// app.js - Mit echtem Foto-Upload & Kamera-Schnappschuss beim Barcode-Scanners
+// app.js - Mit echtem Foto-Upload & Kamera-Schnappschuss beim Barcode-Scanner & Bearbeiten-Modal
 
 function getGroqApiKey() {
   let key = localStorage.getItem('dino_groq_api_key_v1');
@@ -2863,6 +2863,8 @@ function render() {
       const promoPercVal = (item.promoPercent !== undefined && item.promoPercent !== null) ? item.promoPercent : '';
       const isFavEdit = isFavoriteItem(item.name) || isFavoriteItem(item.id);
       const itemAisleVal = getProductAisleForMarket(item.name, marketKey);
+      const currentItemImage = getItemImageForName(item.name);
+
       html += `
         <div class="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
           <div class="bg-white dark:bg-[#1a1a1a] border border-stone-200 dark:border-stone-800 rounded-3xl max-w-md w-full p-4 shadow-2xl space-y-3 max-h-[90vh] overflow-y-auto custom-scrollbar text-stone-900 dark:text-stone-100">
@@ -2873,6 +2875,17 @@ function render() {
               </div>
               <button onclick="state.editingModalItem=null; render();">✕</button>
             </div>
+
+            <div class="flex flex-col items-center justify-center space-y-2 py-1">
+              <div id="edit-item-photo-preview-container" class="w-20 h-20 rounded-2xl bg-stone-100 dark:bg-stone-800 border-2 border-dashed border-stone-300 dark:border-stone-700 flex items-center justify-center overflow-hidden shadow-xs relative">
+                ${currentItemImage ? `<img src="${currentItemImage}" class="w-full h-full object-cover" />` : `<span class="text-xl">📸</span>`}
+              </div>
+              <label class="px-3 py-1.5 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 text-[11px] font-bold rounded-xl cursor-pointer border border-stone-200 dark:border-stone-700 shadow-xs flex items-center gap-1.5">
+                <span>Produktfoto aufnehmen / ändern</span>
+                <input type="file" accept="image/*" capture="environment" onchange="handleEditItemPhotoCapture(this, '${item.name.replace(/'/g, "\\'")}')" class="hidden" />
+              </label>
+            </div>
+
             <div><label class="text-[11px] font-bold text-stone-700 dark:text-stone-300 block mb-1">Name</label><input type="text" id="edit-item-name" value="${item.name}" class="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 rounded-xl px-3 py-2 text-xs font-bold shadow-xs" /></div>
             <div>
               <label class="text-[11px] font-bold text-stone-700 dark:text-stone-300 block mb-1">Einheit</label>
@@ -3459,6 +3472,55 @@ function handleScanPhotoCapture(inputElement) {
           previewContainer.innerHTML = `<img src="${base64Image}" class="w-full h-full object-cover" />`;
         }
         showToast('Foto optimiert & aufgenommen! 📸');
+        saveState();
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+function handleEditItemPhotoCapture(inputElement, itemName) {
+  if (inputElement.files && inputElement.files[0]) {
+    const file = inputElement.files[0];
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+      const img = new Image();
+      img.onload = function() {
+        const canvas = document.createElement('canvas');
+        const MAX_SIZE = 600;
+        let width = img.width;
+        let height = img.height;
+        
+        if (width > height) {
+          if (width > MAX_SIZE) {
+            height *= MAX_SIZE / width;
+            width = MAX_SIZE;
+          }
+        } else {
+          if (height > MAX_SIZE) {
+            width *= MAX_SIZE / height;
+            height = MAX_SIZE;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        const base64Image = canvas.toDataURL('image/jpeg', 0.8);
+        const lowerName = itemName.toLowerCase().trim();
+        
+        if (!state.savedImages) state.savedImages = {};
+        state.savedImages[lowerName] = base64Image;
+
+        const previewContainer = document.getElementById('edit-item-photo-preview-container');
+        if (previewContainer) {
+          previewContainer.innerHTML = `<img src="${base64Image}" class="w-full h-full object-cover" />`;
+        }
+        showToast('Produktfoto aktualisiert! 📸');
         saveState();
       };
       img.src = e.target.result;
