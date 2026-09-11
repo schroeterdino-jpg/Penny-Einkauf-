@@ -777,15 +777,15 @@ function exportAppDataSafe() {
     deletedMasterIds: state.deletedMasterIds,
     customMarketAisles: state.customMarketAisles,
     marketOverrides: state.marketOverrides,
-    purchaseHistory: state.purchaseHistory,
-    savedBarcodes: state.savedBarcodes,
-    savedImages: state.savedImages
+    purchaseHistory: state.purchaseHistory
+    // Bilder und Barcodes bewusst weggelassen, damit das Backup klein und fehlerfrei bleibt!
   };
   state.exportTextContent = JSON.stringify(backupData, null, 2);
   state.showExportModal = true;
   soundAdd();
   render();
 }
+
 
 function importAppDataText() {
   const txtArea = document.getElementById('import-json-textarea');
