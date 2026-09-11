@@ -1,4 +1,4 @@
-// app.js - Dropdown-Breite korrigiert, Galerie-Upload aktiviert & Backup-Schutz integriert
+// app.js - Zukunftssichere Architektur für Tausende Artikel & Bilder (IndexedDB optimiert)
 
 function getGroqApiKey() {
   let key = localStorage.getItem('dino_groq_api_key_v1');
@@ -377,10 +377,19 @@ let state = {
   savedImages: {}
 };
 
+// ZUKUNFTSSICHER: Leichtgewichtiger Speicher-State (ohne schwere Bild-Blobs im Haupt-JSON)
 async function saveState() {
   try {
     state.favorites = cleanDuplicateList(state.favorites);
-    await localforage.setItem('dino_app_state_v125', state);
+    
+    // Trennung unter der Haube: Bilder und Barcodes separat in eigener IndexedDB-Tabelle sichern
+    const lightweightState = Object.assign({}, state);
+    delete lightweightState.savedImages;
+    delete lightweightState.savedBarcodes;
+
+    await localforage.setItem('dino_app_state_v126', lightweightState);
+    await localforage.setItem('dino_app_images_v126', state.savedImages || {});
+    await localforage.setItem('dino_app_barcodes_v126', state.savedBarcodes || {});
   } catch (e) {
     console.error('Fehler beim Speichern in IndexedDB:', e);
   }
@@ -388,38 +397,52 @@ async function saveState() {
 
 async function loadAppState() {
   try {
-    const savedState = await localforage.getItem('dino_app_state_v125');
+    // Getrennte Stores auslesen für maximale Performance
+    const savedState = await localforage.getItem('dino_app_state_v126');
+    const savedImages = await localforage.getItem('dino_app_images_v126');
+    const savedBarcodes = await localforage.getItem('dino_app_barcodes_v126');
+
     if (savedState) {
       state = Object.assign(state, savedState);
-      if (!state.savedBarcodes) state.savedBarcodes = {};
-      if (!state.savedImages) state.savedImages = {};
+      state.savedImages = savedImages || {};
+      state.savedBarcodes = savedBarcodes || {};
     } else {
-      try {
-        const oldItems = localStorage.getItem('penny_items_v124');
-        if (oldItems) {
-          state.activeTab = localStorage.getItem('penny_activetab_v124') || state.activeTab;
-          state.soundEnabled = JSON.parse(localStorage.getItem('penny_sound_v124') || 'true');
-          state.storeMode = JSON.parse(localStorage.getItem('penny_storemode_v124') || 'false');
-          state.isDarkMode = JSON.parse(localStorage.getItem('penny_dark_v124') || 'false');
-          state.activeListId = localStorage.getItem('penny_list_id_v124') || state.activeListId;
-          state.lists = JSON.parse(localStorage.getItem('penny_lists_v124')) || state.lists;
-          state.customProducts = JSON.parse(localStorage.getItem('penny_custom_v124')) || state.customProducts;
-          state.deletedMasterIds = JSON.parse(localStorage.getItem('penny_deleted_v124')) || state.deletedMasterIds;
-          state.customMarketAisles = JSON.parse(localStorage.getItem('penny_custom_aisles_v124')) || state.customMarketAisles;
-          state.marketOverrides = JSON.parse(localStorage.getItem('penny_market_overrides_v124')) || state.marketOverrides;
-          state.favorites = JSON.parse(localStorage.getItem('penny_favs_v124')) || state.favorites;
-          state.savedPrices = JSON.parse(localStorage.getItem('penny_prices_v124')) || state.savedPrices;
-          state.savedDeposits = JSON.parse(localStorage.getItem('penny_deposits_v124')) || state.savedDeposits;
-          state.purchaseHistory = JSON.parse(localStorage.getItem('penny_history_v124')) || state.purchaseHistory;
-          state.items = JSON.parse(oldItems) || state.items;
-          state.pantry = JSON.parse(localStorage.getItem('penny_pantry_v124')) || state.pantry;
-          state.chatMessages = JSON.parse(localStorage.getItem('penny_chat_messages_v124')) || state.chatMessages;
+      // Fallback: Ältere Version (v125) oder localStorage migrieren
+      const oldStateV125 = await localforage.getItem('dino_app_state_v125');
+      if (oldStateV125) {
+        state = Object.assign(state, oldStateV125);
+        state.savedImages = oldStateV125.savedImages || {};
+        state.savedBarcodes = oldStateV125.savedBarcodes || {};
+        await saveState(); // In neue Struktur migrieren
+        showToast('Daten erfolgreich auf zukunftssichere Struktur aktualisiert! 🚀');
+      } else {
+        try {
+          const oldItems = localStorage.getItem('penny_items_v124');
+          if (oldItems) {
+            state.activeTab = localStorage.getItem('penny_activetab_v124') || state.activeTab;
+            state.soundEnabled = JSON.parse(localStorage.getItem('penny_sound_v124') || 'true');
+            state.storeMode = JSON.parse(localStorage.getItem('penny_storemode_v124') || 'false');
+            state.isDarkMode = JSON.parse(localStorage.getItem('penny_dark_v124') || 'false');
+            state.activeListId = localStorage.getItem('penny_list_id_v124') || state.activeListId;
+            state.lists = JSON.parse(localStorage.getItem('penny_lists_v124')) || state.lists;
+            state.customProducts = JSON.parse(localStorage.getItem('penny_custom_v124')) || state.customProducts;
+            state.deletedMasterIds = JSON.parse(localStorage.getItem('penny_deleted_v124')) || state.deletedMasterIds;
+            state.customMarketAisles = JSON.parse(localStorage.getItem('penny_custom_aisles_v124')) || state.customMarketAisles;
+            state.marketOverrides = JSON.parse(localStorage.getItem('penny_market_overrides_v124')) || state.marketOverrides;
+            state.favorites = JSON.parse(localStorage.getItem('penny_favs_v124')) || state.favorites;
+            state.savedPrices = JSON.parse(localStorage.getItem('penny_prices_v124')) || state.savedPrices;
+            state.savedDeposits = JSON.parse(localStorage.getItem('penny_deposits_v124')) || state.savedDeposits;
+            state.purchaseHistory = JSON.parse(localStorage.getItem('penny_history_v124')) || state.purchaseHistory;
+            state.items = JSON.parse(oldItems) || state.items;
+            state.pantry = JSON.parse(localStorage.getItem('penny_pantry_v124')) || state.pantry;
+            state.chatMessages = JSON.parse(localStorage.getItem('penny_chat_messages_v124')) || state.chatMessages;
 
-          await saveState();
-          showToast('Daten erfolgreich in IndexedDB migriert! 🚀');
+            await saveState();
+            showToast('Daten erfolgreich in IndexedDB migriert! 🚀');
+          }
+        } catch (migErr) {
+          console.error('Fehler bei der Migration vom localStorage:', migErr);
         }
-      } catch (migErr) {
-        console.error('Fehler bei der Migration vom localStorage:', migErr);
       }
     }
   } catch (e) {
@@ -746,7 +769,7 @@ function persistProduct(p, oldName = null) {
 
 function exportAppDataSafe() {
   const backupData = {
-    version: "1.25-indexeddb",
+    version: "1.26-indexeddb-optimized",
     date: new Date().toISOString(),
     lists: state.lists,
     activeListId: state.activeListId,
@@ -790,7 +813,7 @@ function importAppDataText() {
       state.marketOverrides = parsed.marketOverrides || {};
       state.purchaseHistory = parsed.purchaseHistory || [];
       
-      // SICHERUNG: Bestehende Bilder und Barcodes beim Import nicht überschreiben, sondern mergen!
+      // SICHERUNG: Bestehende Bilder und Barcodes beim Import mergen
       state.savedBarcodes = Object.assign({}, parsed.savedBarcodes || {}, state.savedBarcodes || {});
       state.savedImages = Object.assign({}, parsed.savedImages || {}, state.savedImages || {});
 
@@ -1378,7 +1401,6 @@ function renderDropdownItem(p, marketKey) {
     </div>
   `;
 }
-
 
 function buildAppContextPrompt() {
   const curList = state.lists.find(l => l.id === state.activeListId) || state.lists[0];
@@ -2400,7 +2422,6 @@ function render() {
               <div id="scan-photo-preview-container" class="w-24 h-24 rounded-2xl bg-stone-100 dark:bg-stone-800 border-2 border-dashed border-stone-300 dark:border-stone-700 flex items-center justify-center overflow-hidden shadow-xs relative">
                 ${currentImage ? `<img src="${currentImage}" class="w-full h-full object-cover" />` : `<span class="text-2xl">📸</span>`}
               </div>
-              <!-- KORREKTUR: capture="environment" entfernt, damit Galerie-Auswahl möglich ist -->
               <label class="px-3 py-1.5 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 text-xs font-bold rounded-xl cursor-pointer border border-stone-200 dark:border-stone-700 shadow-xs flex items-center gap-1.5">
                 <span>Foto aus Galerie / Kamera wählen</span>
                 <input type="file" accept="image/*" onchange="handleScanPhotoCapture(this)" class="hidden" />
@@ -2886,7 +2907,6 @@ function render() {
               <div id="edit-item-photo-preview-container" class="w-20 h-20 rounded-2xl bg-stone-100 dark:bg-stone-800 border-2 border-dashed border-stone-300 dark:border-stone-700 flex items-center justify-center overflow-hidden shadow-xs relative">
                 ${currentItemImage ? `<img src="${currentItemImage}" class="w-full h-full object-cover" />` : `<span class="text-xl">📸</span>`}
               </div>
-              <!-- KORREKTUR: capture="environment" entfernt, damit Galerie-Auswahl möglich ist -->
               <label class="px-3 py-1.5 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 text-[11px] font-bold rounded-xl cursor-pointer border border-stone-200 dark:border-stone-700 shadow-xs flex items-center gap-1.5">
                 <span>Produktfoto aus Galerie / Kamera wählen</span>
                 <input type="file" accept="image/*" onchange="handleEditItemPhotoCapture(this, '${item.name.replace(/'/g, "\\'")}')" class="hidden" />
