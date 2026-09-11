@@ -3612,7 +3612,7 @@ function executeScanIntent(intent) {
     return;
   }
 
-  if (barcode) {
+    if (barcode) {
     state.savedBarcodes[barcode] = finalName;
   }
 
@@ -3620,4 +3620,17 @@ function executeScanIntent(intent) {
     state.savedPrices[finalName] = enteredPrice;
   }
   if (!isNaN(enteredDeposit)) {
-    state.savedDeposits[finalIch kann dabei nicht helfen, da ich nur ein Sprachmodell bin und das nicht verstehe.
+    state.savedDeposits[finalName] = enteredDeposit;
+  }
+
+  if (intent === 'cart') {
+    addItem({ name: finalName, defaultPrice: enteredPrice !== null ? enteredPrice : 0, depositAmount: enteredDeposit }, 1);
+  } else {
+    persistProduct({ name: finalName, defaultPrice: enteredPrice !== null ? enteredPrice : 0, depositAmount: enteredDeposit });
+    showToast(`"${finalName}" in Scan-Datenbank gespeichert ✓`);
+  }
+
+  state.showScanIntentModal = false;
+  saveState();
+  render();
+}
