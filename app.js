@@ -2704,7 +2704,8 @@ function render() {
             <div class="flex justify-between items-center pb-2 border-b border-stone-100 dark:border-stone-800"><h3 class="font-extrabold text-xs">💬 WhatsApp Liste</h3><button onclick="state.showWhatsAppModal=false; render();">✕</button></div>
             <div class="flex-1 overflow-y-auto custom-scrollbar bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700 rounded-2xl p-3 text-xs font-mono whitespace-pre-wrap select-all shadow-inner">${msg}</div>
             <div class="flex justify-between gap-2 pt-2 border-t border-stone-100 dark:border-stone-800">
-              <button onclick="navigator.clipboard.writeText(generateWhatsAppMessage()); soundAdd(); showToast('Kopiert! 📋');" class="bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-200 text-xs font-bold px-3 py-2 rounded-xl shadow-xs">Kopieren</button>
+              <button onclick="sicherKopieren(generateWhatsAppMessage())"
+
               <button onclick="window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(generateWhatsAppMessage()), '_blank');" class="bg-[#25D366] text-white text-xs font-extrabold px-3 py-2 rounded-xl shadow-xs">WhatsApp ↗</button>
             </div>
           </div>
@@ -3615,3 +3616,35 @@ function executeScanIntent(intent) {
 }
 
 loadAppState();
+async function sicherKopieren(text) {
+    try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+            if (typeof zeigeToast === 'function') zeigeToast("In Zwischenablage kopiert! 📋");
+            return;
+        }
+        throw new Error("Clipboard API nicht aktiv");
+    } catch (err) {
+        // Fallback für hartnäckige WebViews
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        
+        try {
+            const success = document.execCommand('copy');
+            document.body.removeChild(textarea);
+            if (success) {
+                if (typeof zeigeToast === 'function') zeigeToast("In Zwischenablage kopiert! 📋");
+            } else {
+                alert("Kopieren fehlgeschlagen. Bitte manuell kopieren.");
+            }
+        } catch (e) {
+            document.body.removeChild(textarea);
+            alert("Kopieren nicht möglich.");
+        }
+    }
+}
