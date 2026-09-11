@@ -377,12 +377,9 @@ let state = {
   savedImages: {}
 };
 
-// ZUKUNFTSSICHER: Leichtgewichtiger Speicher-State (ohne schwere Bild-Blobs im Haupt-JSON)
 async function saveState() {
   try {
     state.favorites = cleanDuplicateList(state.favorites);
-    
-    // Trennung unter der Haube: Bilder und Barcodes separat in eigener IndexedDB-Tabelle sichern
     const lightweightState = Object.assign({}, state);
     delete lightweightState.savedImages;
     delete lightweightState.savedBarcodes;
@@ -397,7 +394,6 @@ async function saveState() {
 
 async function loadAppState() {
   try {
-    // Getrennte Stores auslesen für maximale Performance
     const savedState = await localforage.getItem('dino_app_state_v126');
     const savedImages = await localforage.getItem('dino_app_images_v126');
     const savedBarcodes = await localforage.getItem('dino_app_barcodes_v126');
@@ -407,13 +403,12 @@ async function loadAppState() {
       state.savedImages = savedImages || {};
       state.savedBarcodes = savedBarcodes || {};
     } else {
-      // Fallback: Ältere Version (v125) oder localStorage migrieren
       const oldStateV125 = await localforage.getItem('dino_app_state_v125');
       if (oldStateV125) {
         state = Object.assign(state, oldStateV125);
         state.savedImages = oldStateV125.savedImages || {};
         state.savedBarcodes = oldStateV125.savedBarcodes || {};
-        await saveState(); // In neue Struktur migrieren
+        await saveState();
         showToast('Daten erfolgreich auf zukunftssichere Struktur aktualisiert! 🚀');
       } else {
         try {
@@ -813,7 +808,6 @@ function importAppDataText() {
       state.marketOverrides = parsed.marketOverrides || {};
       state.purchaseHistory = parsed.purchaseHistory || [];
       
-      // SICHERUNG: Bestehende Bilder und Barcodes beim Import mergen
       state.savedBarcodes = Object.assign({}, parsed.savedBarcodes || {}, state.savedBarcodes || {});
       state.savedImages = Object.assign({}, parsed.savedImages || {}, state.savedImages || {});
 
@@ -1856,7 +1850,6 @@ function render() {
               </button>
               <button onclick="const n=document.getElementById('main-search-input').value.trim(); if(n){ addItem(n, 1); render(); }" class="bg-red-600 hover:bg-red-700 text-white text-xs font-extrabold px-3.5 py-2.5 rounded-2xl shrink-0 shadow-xs">+ Hinzufügen</button>
             </div>
-            <!-- WICHTIG: min-w-full sorgt dafür, dass das Dropdown breit genug ist und Text nicht untereinander bricht -->
             <div id="search-dropdown-container" class="hidden absolute left-0 right-0 top-full mt-2 min-w-full bg-white dark:bg-[#1a1a1a] border border-stone-200 dark:border-stone-800 rounded-3xl shadow-xl overflow-hidden z-40 max-h-60 overflow-y-auto custom-scrollbar"></div>
           </div>
 
@@ -2476,7 +2469,7 @@ function render() {
 
             <div class="flex flex-wrap justify-between items-center gap-2 pt-2 border-t border-stone-100 dark:border-stone-800">
               <div class="flex gap-2">
-                <button onclick="const ta=document.getElementById('import-json-textarea'); ta.select(); document.execCommand('copy'); soundAdd(); showToast('In Zwischenablage kopiert! 📋');" class="px-3 py-2 bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-200 text-xs font-bold rounded-xl shadow-xs">Kopieren</button>
+                <button onclick="sicherKopieren(document.getElementById('import-json-textarea').value)" class="px-3 py-2 bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-200 text-xs font-bold rounded-xl shadow-xs">Kopieren</button>
                 <button onclick="importAppDataText();" class="px-3 py-2 bg-blue-600 text-white text-xs font-bold rounded-xl shadow-xs">Einspielen</button>
               </div>
               <button onclick="state.showExportModal=false; render();" class="px-4 py-2 bg-red-600 text-white font-extrabold text-xs rounded-xl shadow-xs">Schließen</button>
@@ -2704,8 +2697,7 @@ function render() {
             <div class="flex justify-between items-center pb-2 border-b border-stone-100 dark:border-stone-800"><h3 class="font-extrabold text-xs">💬 WhatsApp Liste</h3><button onclick="state.showWhatsAppModal=false; render();">✕</button></div>
             <div class="flex-1 overflow-y-auto custom-scrollbar bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700 rounded-2xl p-3 text-xs font-mono whitespace-pre-wrap select-all shadow-inner">${msg}</div>
             <div class="flex justify-between gap-2 pt-2 border-t border-stone-100 dark:border-stone-800">
-              <button onclick="sicherKopieren(generateWhatsAppMessage())"
-
+              <button onclick="sicherKopieren(generateWhatsAppMessage())" class="bg-stone-100 dark:bg-stone-800 text-stone-800 dark:text-stone-200 text-xs font-bold px-3 py-2 rounded-xl shadow-xs">Kopieren</button>
               <button onclick="window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(generateWhatsAppMessage()), '_blank');" class="bg-[#25D366] text-white text-xs font-extrabold px-3 py-2 rounded-xl shadow-xs">WhatsApp ↗</button>
             </div>
           </div>
@@ -3616,19 +3608,21 @@ function executeScanIntent(intent) {
 }
 
 loadAppState();
+
 async function sicherKopieren(text) {
     try {
         if (navigator.clipboard && navigator.clipboard.writeText) {
             await navigator.clipboard.writeText(text);
-            if (typeof zeigeToast === 'function') zeigeToast("In Zwischenablage kopiert! 📋");
+            showToast("In Zwischenablage kopiert! 📋");
             return;
         }
         throw new Error("Clipboard API nicht aktiv");
     } catch (err) {
-        // Fallback für hartnäckige WebViews
         const textarea = document.createElement("textarea");
         textarea.value = text;
         textarea.style.position = "fixed";
+        textarea.style.top = "0";
+        textarea.style.left = "0";
         textarea.style.opacity = "0";
         document.body.appendChild(textarea);
         textarea.focus();
@@ -3638,7 +3632,7 @@ async function sicherKopieren(text) {
             const success = document.execCommand('copy');
             document.body.removeChild(textarea);
             if (success) {
-                if (typeof zeigeToast === 'function') zeigeToast("In Zwischenablage kopiert! 📋");
+                showToast("In Zwischenablage kopiert! 📋");
             } else {
                 alert("Kopieren fehlgeschlagen. Bitte manuell kopieren.");
             }
