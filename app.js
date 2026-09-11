@@ -3610,35 +3610,45 @@ function executeScanIntent(intent) {
 loadAppState();
 
 async function sicherKopieren(text) {
-    try {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            await navigator.clipboard.writeText(text);
-            showToast("In Zwischenablage kopiert! 📋");
-            return;
-        }
-        throw new Error("Clipboard API nicht aktiv");
-    } catch (err) {
-        const textarea = document.createElement("textarea");
-        textarea.value = text;
-        textarea.style.position = "fixed";
-        textarea.style.top = "0";
-        textarea.style.left = "0";
-        textarea.style.opacity = "0";
-        document.body.appendChild(textarea);
-        textarea.focus();
-        textarea.select();
-        
+    let kopiertErfolgreich = false;
+
+    // 1. Versuch: Moderne Clipboard API
+    if (navigator.clipboard && navigator.clipboard.writeText) {
         try {
+            await navigator.clipboard.writeText(text);
+            kopiertErfolgreich = true;
+        } catch (err) {
+            // API hat blockiert, wir gehen zum Fallback über
+        }
+    }
+
+    // 2. Versuch: Textarea Fallback, falls API nicht geklappt hat
+    if (!kopiertErfolgreich) {
+        try {
+            const textarea = document.createElement("textarea");
+            textarea.value = text;
+            textarea.style.position = "fixed";
+            textarea.style.top = "0";
+            textarea.style.left = "0";
+            textarea.style.opacity = "0";
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            
             const success = document.execCommand('copy');
             document.body.removeChild(textarea);
             if (success) {
-                showToast("In Zwischenablage kopiert! 📋");
-            } else {
-                alert("Kopieren fehlgeschlagen. Bitte manuell kopieren.");
+                kopiertErfolgreich = true;
             }
         } catch (e) {
-            document.body.removeChild(textarea);
-            alert("Kopieren nicht möglich.");
+            // Fallback fehlgeschlagen
         }
+    }
+
+    // Einziger, sauberer Toast am Ende
+    if (kopiertErfolgreich) {
+        showToast("In Zwischenablage kopiert! 📋");
+    } else {
+        alert("Kopieren fehlgeschlagen. Bitte den Text manuell markieren und kopieren.");
     }
 }
