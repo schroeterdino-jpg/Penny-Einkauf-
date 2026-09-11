@@ -3610,45 +3610,14 @@ function executeScanIntent(intent) {
 loadAppState();
 
 async function sicherKopieren(text) {
-    let erfolgreich = false;
-
-    // 1. Sofortiger synchroner Versuch mit Textarea (funktioniert am ehesten in WebViews bei direktem Klick)
-    try {
-        const textarea = document.createElement("textarea");
+    // Direkt das Textfeld füllen, fokussieren und markieren – absolut fehlerfrei ohne Android-Systemkonflikte
+    const textarea = document.getElementById('import-json-textarea');
+    if (textarea) {
         textarea.value = text;
-        textarea.style.position = "fixed";
-        textarea.style.top = "0";
-        textarea.style.left = "0";
-        textarea.style.opacity = "0";
-        document.body.appendChild(textarea);
         textarea.focus();
         textarea.select();
-        
-        erfolgreich = document.execCommand('copy');
-        document.body.removeChild(textarea);
-    } catch (e) {
-        erfolgreich = false;
+        showToast("Text markiert – tippe auf 'Kopieren'! 📋");
+    } else {
+        alert("Bitte den Backup-Text kurz manuell markieren und kopieren.");
     }
-
-    if (erfolgreich) {
-        showToast("In Zwischenablage kopiert! 📋");
-        return;
-    }
-
-    // 2. Fallback: Moderne API probieren
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        try {
-            await navigator.clipboard.writeText(text);
-            showToast("In Zwischenablage kopiert! 📋");
-            return;
-        } catch (err) {}
-    }
-
-    // 3. Wenn die APK das Kopieren komplett sperrt, Text im Feld markieren lassen
-    const box = document.getElementById('import-json-textarea');
-    if (box) {
-        box.focus();
-        box.select();
-    }
-    alert("Dein Android-WebView blockiert den automatischen Kopiervorgang. Der Text wurde im Feld markiert – tippe einfach kurz auf 'Kopieren' in deinem Handymenü!");
 }
