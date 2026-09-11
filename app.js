@@ -3610,45 +3610,45 @@ function executeScanIntent(intent) {
 loadAppState();
 
 async function sicherKopieren(text) {
-    let kopiertErfolgreich = false;
+    let erfolgreich = false;
 
-    // 1. Versuch: Moderne Clipboard API
+    // 1. Sofortiger synchroner Versuch mit Textarea (funktioniert am ehesten in WebViews bei direktem Klick)
+    try {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.style.position = "fixed";
+        textarea.style.top = "0";
+        textarea.style.left = "0";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        
+        erfolgreich = document.execCommand('copy');
+        document.body.removeChild(textarea);
+    } catch (e) {
+        erfolgreich = false;
+    }
+
+    if (erfolgreich) {
+        showToast("In Zwischenablage kopiert! 📋");
+        return;
+    }
+
+    // 2. Fallback: Moderne API probieren
     if (navigator.clipboard && navigator.clipboard.writeText) {
         try {
             await navigator.clipboard.writeText(text);
-            kopiertErfolgreich = true;
-        } catch (err) {
-            // API hat blockiert, wir gehen zum Fallback über
-        }
+            showToast("In Zwischenablage kopiert! 📋");
+            return;
+        } catch (err) {}
     }
 
-    // 2. Versuch: Textarea Fallback, falls API nicht geklappt hat
-    if (!kopiertErfolgreich) {
-        try {
-            const textarea = document.createElement("textarea");
-            textarea.value = text;
-            textarea.style.position = "fixed";
-            textarea.style.top = "0";
-            textarea.style.left = "0";
-            textarea.style.opacity = "0";
-            document.body.appendChild(textarea);
-            textarea.focus();
-            textarea.select();
-            
-            const success = document.execCommand('copy');
-            document.body.removeChild(textarea);
-            if (success) {
-                kopiertErfolgreich = true;
-            }
-        } catch (e) {
-            // Fallback fehlgeschlagen
-        }
+    // 3. Wenn die APK das Kopieren komplett sperrt, Text im Feld markieren lassen
+    const box = document.getElementById('import-json-textarea');
+    if (box) {
+        box.focus();
+        box.select();
     }
-
-    // Einziger, sauberer Toast am Ende
-    if (kopiertErfolgreich) {
-        showToast("In Zwischenablage kopiert! 📋");
-    } else {
-        alert("Kopieren fehlgeschlagen. Bitte den Text manuell markieren und kopieren.");
-    }
+    alert("Dein Android-WebView blockiert den automatischen Kopiervorgang. Der Text wurde im Feld markiert – tippe einfach kurz auf 'Kopieren' in deinem Handymenü!");
 }
